@@ -3,13 +3,19 @@
     "actorSpecification": 1,
     "name": "website-screenshot-api",
     "title": "Website Screenshot API",
-    "description": "Capture full-page or viewport screenshots of any URL as PNG or JPEG, plus optional PDF. Device presets, dark mode, cookie-banner hiding, element clipping. Pay per screenshot; failed pages are free.",
+    "description": "Screenshot any URL in a real browser: full-page or viewport PNG/JPEG, desktop and mobile presets, dark mode, cookie banners hidden, optional PDF. Pay per page.",
     "version": "0.1",
     "buildTag": "latest",
-    "meta": { "templateId": "ts-crawlee-playwright-chrome", "generatedBy": "Claude Code with Claude Opus 5" },
+    "meta": {
+        "templateId": "ts-crawlee-playwright-chrome",
+        "generatedBy": "Claude Code with Claude Opus 5"
+    },
     "inputSchema": "./input_schema.json",
     "outputSchema": "./output_schema.json",
-    "storages": { "dataset": "./dataset_schema.json", "keyValueStore": "./key_value_store_schema.json" },
+    "storages": {
+        "dataset": "./dataset_schema.json",
+        "keyValueStore": "./key_value_store_schema.json"
+    },
     "dockerfile": "../Dockerfile",
     "minMemoryMbytes": 1024,
     "maxMemoryMbytes": 8192

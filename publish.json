@@ -1,10 +1,18 @@
 {
     "seoTitle": "Website Screenshot API: full-page PNG, JPEG and PDF",
     "seoDescription": "Screenshot any URL in a real browser: full page or viewport, desktop/mobile presets, dark mode, cookie banners hidden, optional PDF. Pay per screenshot.",
-    "categories": ["DEVELOPER_TOOLS", "AUTOMATION", "MARKETING"],
+    "categories": [
+        "DEVELOPER_TOOLS",
+        "AUTOMATION",
+        "MARKETING"
+    ],
     "isPublic": true,
     "actorPermissionLevel": "LIMITED_PERMISSIONS",
-    "defaultRunOptions": { "build": "latest", "memoryMbytes": 2048, "timeoutSecs": 3600 },
+    "defaultRunOptions": {
+        "build": "latest",
+        "memoryMbytes": 2048,
+        "timeoutSecs": 3600
+    },
     "pricing": {
         "events": {
             "screenshot": {
@@ -19,5 +27,6 @@
                 "eventPriceUsd": 0.004
             }
         }
-    }
+    },
+    "pictureUrl": "https://api.apify.com/v2/key-value-stores/xwGvZbThlWx5vaPgh/records/website-screenshot-api.png"
 }

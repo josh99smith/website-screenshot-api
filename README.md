@@ -1,6 +1,17 @@
-Turn any URL into a **full-page screenshot or PDF** with one API call. Paste a list of websites, pick a device (desktop, laptop, tablet, mobile or custom viewport), choose PNG or JPEG, and get back image files plus a structured record for each page. Cookie banners are hidden automatically, lazy-loaded images are scrolled into view, and pages that fail to load are reported **free of charge**.
+This **website screenshot API** turns any URL into a full-page screenshot or PDF with one call. Paste a list of websites, pick a device (desktop, laptop, tablet, mobile or custom viewport), choose PNG or JPEG, and get back image files plus a structured record for each page. Cookie banners are hidden automatically, lazy-loaded images are scrolled into view, and pages that fail to load are reported **free of charge**.
 
 It runs in a real headless Chromium browser on Apify's infrastructure, so there is nothing to install and no browser fleet to maintain, and it can be scheduled, called from code, or wired into Zapier, Make, n8n and the Apify MCP server for AI agents.
+
+## Features
+
+- Take full-page screenshots of a list of URLs in bulk
+- Convert a web page to PDF (A4, Letter or Legal) from a URL
+- Capture mobile, tablet and desktop screenshots of the same page in one run
+- Screenshot a website without cookie banners and consent pop-ups
+- Render a website in dark mode with `prefers-color-scheme: dark`
+- Screenshot a single element on a page with a CSS selector
+- Generate website thumbnails and link previews as JPEG at a chosen quality
+- Automate website screenshots on a schedule and store them in Apify storage
 
 ## What can you use Website Screenshot API for?
 
@@ -8,7 +19,7 @@ It runs in a real headless Chromium browser on Apify's infrastructure, so there 
 - **Link previews and thumbnails** for directories, newsletters, bookmarking tools and CMS cards.
 - **Design and QA reviews**: capture the same pages on laptop, tablet and mobile in one run, in light and dark mode.
 - **Compliance and evidence**: archive how a page looked on a given date, as an image and as a PDF.
-- **Reports**: convert dashboards or articles into PDFs (A4, Letter or Legal) for sharing.
+- **Reports**: convert dashboards or articles into PDFs for sharing.
 - **AI agents**: give an agent eyes on the web through the Apify MCP server.
 
 ## How it works
@@ -33,8 +44,6 @@ Each URL is opened in headless Chromium with the viewport, pixel density and use
     "renderPdf": false
 }
 ```
-
-From code, start the Actor with the API and read the `screenshotUrl` of each dataset item, which is a direct link to the image in the key-value store.
 
 ## Output
 
@@ -74,6 +83,47 @@ Pages that could not be captured are still listed, so nothing goes missing from 
 | `title` | The page title. |
 | `errorType` | For failures: `invalid-url`, `dns`, `timeout`, `blocked`, `http-error`, `network` or `other`. |
 
+## Use it from the API, Python, JavaScript or an AI agent
+
+Run the Actor and get the dataset records, including the `screenshotUrl` of every image, in one HTTP call:
+
+```bash
+curl -X POST "https://api.apify.com/v2/acts/josh99smith~website-screenshot-api/run-sync-get-dataset-items?token=<YOUR_API_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{ "urls": ["https://apify.com"], "device": "mobile", "format": "jpeg" }'
+```
+
+Python, with the [apify-client](https://docs.apify.com/api/client/python) package:
+
+```python
+from apify_client import ApifyClient
+
+client = ApifyClient("<YOUR_API_TOKEN>")
+run = client.actor("josh99smith/website-screenshot-api").call(
+    run_input={"urls": ["https://apify.com"], "device": "laptop", "fullPage": True, "renderPdf": True}
+)
+for item in client.dataset(run["defaultDatasetId"]).iterate_items():
+    print(item["url"], item.get("screenshotUrl"), item.get("pdfUrl"))
+```
+
+JavaScript, with the [apify-client](https://docs.apify.com/api/client/js) package:
+
+```javascript
+import { ApifyClient } from "apify-client";
+
+const client = new ApifyClient({ token: "<YOUR_API_TOKEN>" });
+const run = await client.actor("josh99smith/website-screenshot-api").call({
+    urls: ["https://apify.com"],
+    device: "laptop",
+    format: "png",
+    fullPage: true,
+});
+const { items } = await client.dataset(run.defaultDatasetId).listItems();
+console.log(items.map((item) => item.screenshotUrl));
+```
+
+The Actor is also available as a tool through the Apify MCP server for AI agents, and it can be scheduled or connected to Zapier, Make, n8n and Google Sheets in the Integrations tab.
+
 ## Pricing: how much does it cost to screenshot a website?
 
 You pay a **flat price per captured screenshot** and, if enabled, a flat price per **PDF**; both are shown next to the Start button. Pages that fail to load cost nothing, and there is no per-run start fee. Set a maximum cost per run and the Actor stops cleanly when it is reached.
@@ -91,17 +141,36 @@ For comparison, screenshot SaaS products typically charge a monthly subscription
 
 ## FAQ
 
-**Are cookie banners accepted or dismissed?**
+### Are cookie banners accepted or dismissed?
+
 No. They are hidden visually with CSS so the capture is clean. No consent choice is made on the visited site.
 
-**Why is the page dark / light?**
+### Why is the screenshot dark or light?
+
 The Actor requests a light colour scheme unless **Dark mode** is on. Sites that ship a dark design (like Apify's) will still render dark.
 
-**Can it log in or click through pop-ups?**
+### Can it log in or click through pop-ups?
+
 Not in this version. It captures publicly reachable pages as an anonymous visitor.
 
-**Is this legal?**
+### What are the limits on page size, timeouts and batch size?
+
+There is no fixed cap on the number of URLs; the run stops cleanly when it reaches the maximum cost you set. Each page gets the configured **Page timeout** (10 to 180 seconds, default 60) and up to 3 retries. Viewports range from 320 to 3840 pixels wide at a scale factor of 1 to 3, and concurrency is capped at 20 tabs. Very long pages are captured in full, but extremely tall images (tens of thousands of pixels) may be truncated by Chromium.
+
+### Is it legal to screenshot a website?
+
 The Actor loads public web pages in a browser, like a visitor would, at low request rates. You are responsible for how you use the captured images and for respecting the target sites' terms and copyright.
+
+## Related Actors by the same developer
+
+- [Website Tech Stack Detector](https://apify.com/josh99smith/tech-stack-detector): what a website is built with.
+- [Google Autocomplete Scraper](https://apify.com/josh99smith/google-autocomplete-scraper): keyword suggestions from Google's search box.
+- [App Reviews Scraper](https://apify.com/josh99smith/app-reviews-scraper): App Store and Google Play reviews.
+- [PageSpeed Insights Audit](https://apify.com/josh99smith/pagespeed-insights-audit): Core Web Vitals via Google's API.
+- [Remote Jobs Aggregator](https://apify.com/josh99smith/remote-jobs-aggregator): remote job listings.
+- [PDF Text Extractor](https://apify.com/josh99smith/pdf-text-extractor): text and metadata from PDFs.
+- [Sitemap URL Extractor](https://apify.com/josh99smith/sitemap-url-extractor): all URLs from XML sitemaps.
+- [RSS Feed to JSON](https://apify.com/josh99smith/rss-feed-to-json): feeds as JSON.
 
 ## Support
 

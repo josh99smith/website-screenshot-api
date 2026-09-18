@@ -1,6 +1,95 @@
 {
     "actorSpecification": 1,
-    "fields": {},
+    "fields": {
+        "type": "object",
+        "properties": {
+            "url": {
+                "type": "string",
+                "description": "The website URL exactly as you entered it in the input."
+            },
+            "success": {
+                "type": "boolean",
+                "description": "True when the page was rendered and a screenshot saved (billed); false for a free failure record."
+            },
+            "fetchedAt": {
+                "type": "string",
+                "format": "date-time",
+                "description": "ISO 8601 timestamp of when the page was captured."
+            },
+            "finalUrl": {
+                "type": "string",
+                "description": "The URL that was actually captured, after following redirects."
+            },
+            "statusCode": {
+                "type": ["integer", "null"],
+                "description": "HTTP status code of the page (error pages such as 404 are still captured), or null when unknown."
+            },
+            "title": {
+                "type": ["string", "null"],
+                "description": "The page title as shown in the browser tab, or null if it has none."
+            },
+            "screenshotUrl": {
+                "type": "string",
+                "description": "Direct download link to the screenshot image in the run's key-value store."
+            },
+            "screenshotKey": {
+                "type": "string",
+                "description": "Key of the screenshot record in the key-value store, for example screenshot-001-example-com.png."
+            },
+            "format": {
+                "type": "string",
+                "description": "Image format of the screenshot.",
+                "enum": ["png", "jpeg"]
+            },
+            "width": {
+                "type": "integer",
+                "description": "Width of the captured image in pixels (viewport width times device scale factor)."
+            },
+            "height": {
+                "type": "integer",
+                "description": "Height of the captured image in pixels; the full page height when fullPage is true."
+            },
+            "fullPage": {
+                "type": "boolean",
+                "description": "True when the whole scrollable page was captured, false for a viewport or single-element capture."
+            },
+            "device": {
+                "type": "string",
+                "description": "Device preset used for the viewport, pixel density and user agent.",
+                "enum": ["laptop", "desktop", "tablet", "mobile", "custom"]
+            },
+            "sizeBytes": {
+                "type": "integer",
+                "description": "File size of the screenshot image in bytes."
+            },
+            "pdfUrl": {
+                "type": "string",
+                "description": "Direct download link to the PDF render (only when 'Also render a PDF' is on)."
+            },
+            "pdfKey": {
+                "type": "string",
+                "description": "Key of the PDF record in the key-value store (only when 'Also render a PDF' is on)."
+            },
+            "pdfSizeBytes": {
+                "type": "integer",
+                "description": "File size of the PDF in bytes (only when 'Also render a PDF' is on)."
+            },
+            "renderTimeMs": {
+                "type": "integer",
+                "description": "Milliseconds spent loading, preparing and capturing the page."
+            },
+            "errorType": {
+                "type": "string",
+                "description": "Failure category when success is false.",
+                "enum": ["invalid-url", "dns", "timeout", "blocked", "http-error", "network", "other"]
+            },
+            "error": {
+                "type": "string",
+                "description": "Human-readable error message explaining why the page could not be captured."
+            }
+        },
+        "required": ["url", "success", "fetchedAt"]
+    },
     "views": {
         "overview": {
             "title": "Screenshots",
