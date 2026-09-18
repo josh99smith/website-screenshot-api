@@ -1,0 +1,23 @@
+{
+    "seoTitle": "Website Screenshot API: full-page PNG, JPEG and PDF",
+    "seoDescription": "Screenshot any URL in a real browser: full page or viewport, desktop/mobile presets, dark mode, cookie banners hidden, optional PDF. Pay per screenshot.",
+    "categories": ["DEVELOPER_TOOLS", "AUTOMATION", "MARKETING"],
+    "isPublic": true,
+    "actorPermissionLevel": "LIMITED_PERMISSIONS",
+    "defaultRunOptions": { "build": "latest", "memoryMbytes": 2048, "timeoutSecs": 3600 },
+    "pricing": {
+        "events": {
+            "screenshot": {
+                "eventTitle": "Screenshot captured",
+                "eventDescription": "One page rendered in headless Chromium and saved as PNG or JPEG. Pages that fail to load are not charged.",
+                "eventPriceUsd": 0.005,
+                "isPrimaryEvent": true
+            },
+            "pdf-rendered": {
+                "eventTitle": "PDF rendered",
+                "eventDescription": "One page additionally saved as a PDF (only when 'Also render a PDF' is enabled).",
+                "eventPriceUsd": 0.004
+            }
+        }
+    }
+}

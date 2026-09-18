@@ -1,0 +1,23 @@
+{
+    "actorKeyValueStoreSchemaVersion": 1,
+    "title": "Screenshots and PDFs",
+    "collections": {
+        "screenshots": {
+            "title": "Screenshots",
+            "description": "One image per rendered page",
+            "keyPrefix": "screenshot-",
+            "contentTypes": ["image/png", "image/jpeg"]
+        },
+        "pdfs": {
+            "title": "PDFs",
+            "description": "PDF renders when 'Also render a PDF' is enabled",
+            "keyPrefix": "pdf-",
+            "contentTypes": ["application/pdf"]
+        },
+        "summary": {
+            "title": "Run summary",
+            "key": "SUMMARY",
+            "contentTypes": ["application/json"]
+        }
+    }
+}

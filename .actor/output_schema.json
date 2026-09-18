@@ -1,0 +1,23 @@
+{
+    "actorOutputSchemaVersion": 1,
+    "title": "Website Screenshot API output",
+    "properties": {
+        "results": {
+            "type": "string",
+            "title": "Screenshot records",
+            "template": "{{links.apiDefaultDatasetUrl}}",
+            "description": "One record per URL with the screenshot URL, dimensions, page title and status."
+        },
+        "files": {
+            "type": "string",
+            "title": "Image and PDF files",
+            "template": "{{links.apiDefaultKeyValueStoreUrl}}/keys",
+            "description": "The captured images (screenshot-*) and PDFs (pdf-*)."
+        },
+        "summary": {
+            "type": "string",
+            "title": "Run summary",
+            "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/SUMMARY"
+        }
+    }
+}

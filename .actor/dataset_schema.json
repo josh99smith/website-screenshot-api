@@ -1,0 +1,28 @@
+{
+    "actorSpecification": 1,
+    "fields": {},
+    "views": {
+        "overview": {
+            "title": "Screenshots",
+            "transformation": {
+                "fields": ["screenshotUrl", "url", "success", "title", "width", "height", "sizeBytes", "pdfUrl", "statusCode", "errorType", "error"]
+            },
+            "display": {
+                "component": "table",
+                "properties": {
+                    "screenshotUrl": { "label": "Screenshot", "format": "image" },
+                    "url": { "label": "Website", "format": "link" },
+                    "success": { "label": "OK", "format": "boolean" },
+                    "title": { "label": "Page title", "format": "text" },
+                    "width": { "label": "Width", "format": "number" },
+                    "height": { "label": "Height", "format": "number" },
+                    "sizeBytes": { "label": "Bytes", "format": "number" },
+                    "pdfUrl": { "label": "PDF", "format": "link" },
+                    "statusCode": { "label": "HTTP status", "format": "number" },
+                    "errorType": { "label": "Error type", "format": "text" },
+                    "error": { "label": "Error", "format": "text" }
+                }
+            }
+        }
+    }
+}

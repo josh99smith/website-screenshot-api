@@ -1,0 +1,174 @@
+{
+    "$schema": "https://apify.com/schemas/v1/input.ide.json",
+    "title": "Website Screenshot API input",
+    "description": "Paste website URLs and get full-page or viewport screenshots (PNG or JPEG) and optional PDFs. Each rendered page is one billable screenshot; pages that fail to load are reported free of charge.",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "urls": {
+            "title": "Website URLs",
+            "type": "array",
+            "description": "One URL per line. The scheme is optional (`example.com` works). Duplicates are removed.",
+            "editor": "stringList",
+            "prefill": ["https://apify.com", "https://www.wikipedia.org", "https://github.com"],
+            "uniqueItems": true
+        },
+        "device": {
+            "title": "Device preset",
+            "type": "string",
+            "description": "Viewport, pixel density and user agent preset. Choose `custom` to set width, height and scale factor yourself.",
+            "enum": ["laptop", "desktop", "tablet", "mobile", "custom"],
+            "enumTitles": ["Laptop (1366x768)", "Desktop (1920x1080)", "Tablet (820x1180 @2x)", "Mobile (390x844 @3x, iPhone UA)", "Custom"],
+            "default": "laptop"
+        },
+        "fullPage": {
+            "title": "Full page",
+            "type": "boolean",
+            "description": "Capture the whole scrollable page instead of just the first screen.",
+            "default": true
+        },
+        "format": {
+            "title": "Image format",
+            "type": "string",
+            "enum": ["png", "jpeg"],
+            "enumTitles": ["PNG (lossless)", "JPEG (smaller)"],
+            "description": "PNG is lossless; JPEG files are much smaller and support the quality setting.",
+            "default": "png"
+        },
+        "quality": {
+            "title": "JPEG quality",
+            "type": "integer",
+            "description": "1 to 100. Ignored for PNG.",
+            "default": 80,
+            "minimum": 1,
+            "maximum": 100,
+            "editor": "number"
+        },
+        "hideCookieBanners": {
+            "title": "Hide cookie banners",
+            "type": "boolean",
+            "description": "Hide the most common cookie / consent pop-ups (OneTrust, Cookiebot, Didomi, Usercentrics, Quantcast and 60+ others) with CSS before capturing. Nothing is clicked or accepted.",
+            "default": true
+        },
+        "renderPdf": {
+            "title": "Also render a PDF",
+            "type": "boolean",
+            "description": "Additionally save the page as a PDF (billed as a separate PDF event).",
+            "default": false
+        },
+        "pdfFormat": {
+            "title": "PDF paper size",
+            "type": "string",
+            "enum": ["A4", "Letter", "Legal"],
+            "default": "A4",
+            "description": "Paper size used when rendering PDFs."
+        },
+        "darkMode": {
+            "title": "Dark mode",
+            "type": "boolean",
+            "description": "Emulate `prefers-color-scheme: dark` so sites with a dark theme render it.",
+            "default": false
+        },
+        "viewportWidth": {
+            "title": "Viewport width (custom)",
+            "type": "integer",
+            "description": "Only used with the `custom` device preset.",
+            "default": 1366,
+            "minimum": 320,
+            "maximum": 3840,
+            "editor": "number",
+            "sectionCaption": "Custom viewport"
+        },
+        "viewportHeight": {
+            "title": "Viewport height (custom)",
+            "type": "integer",
+            "description": "Only used with the `custom` device preset.",
+            "default": 768,
+            "minimum": 240,
+            "maximum": 2160,
+            "editor": "number"
+        },
+        "deviceScaleFactor": {
+            "title": "Device scale factor (custom)",
+            "type": "integer",
+            "description": "1 = standard, 2 = retina, 3 = high-density phone. Only used with the `custom` preset.",
+            "default": 1,
+            "minimum": 1,
+            "maximum": 3,
+            "editor": "number"
+        },
+        "waitUntil": {
+            "title": "Wait until",
+            "type": "string",
+            "enum": ["networkidle", "load", "domcontentloaded"],
+            "enumTitles": ["Network idle (most complete)", "Load event", "DOM content loaded (fastest)"],
+            "description": "When the page is considered ready. `networkidle` additionally waits (up to 15 s) for background requests to settle after the load event, which gives the most complete render.",
+            "default": "networkidle",
+            "sectionCaption": "Timing and content"
+        },
+        "delayMs": {
+            "title": "Extra delay (ms)",
+            "type": "integer",
+            "description": "Additional wait after the page is ready, for animations or late scripts.",
+            "default": 500,
+            "minimum": 0,
+            "maximum": 15000,
+            "editor": "number"
+        },
+        "autoScroll": {
+            "title": "Scroll before capture",
+            "type": "boolean",
+            "description": "Scroll through the page first so lazy-loaded images render in full-page screenshots.",
+            "default": true
+        },
+        "hideSelectors": {
+            "title": "Hide elements (CSS selectors)",
+            "type": "array",
+            "description": "Extra CSS selectors to hide before capturing, e.g. `.chat-widget`, `#newsletter-popup`.",
+            "editor": "stringList",
+            "default": []
+        },
+        "clipSelector": {
+            "title": "Capture only this element (CSS selector)",
+            "type": "string",
+            "description": "Screenshot a single element, e.g. `#pricing-table`, instead of the page.",
+            "editor": "textfield"
+        },
+        "maxConcurrency": {
+            "title": "Max concurrency",
+            "type": "integer",
+            "description": "How many pages to render in parallel. Each browser tab uses roughly 200 to 400 MB of memory.",
+            "default": 5,
+            "minimum": 1,
+            "maximum": 20,
+            "editor": "number",
+            "sectionCaption": "Advanced"
+        },
+        "timeoutSecs": {
+            "title": "Page timeout (seconds)",
+            "type": "integer",
+            "description": "Give up on a page after this long.",
+            "default": 60,
+            "minimum": 10,
+            "maximum": 180,
+            "editor": "number"
+        },
+        "maxRetries": {
+            "title": "Retries per page",
+            "type": "integer",
+            "default": 1,
+            "minimum": 0,
+            "maximum": 3,
+            "description": "Retry a page that failed to load this many times before reporting it.",
+            "editor": "number"
+        },
+        "proxyConfiguration": {
+            "title": "Proxy configuration",
+            "type": "object",
+            "description": "Optional. Use Apify Proxy for sites that block cloud IP addresses or to render geo-specific content. Proxy traffic is billed by Apify separately.",
+            "editor": "proxy",
+            "prefill": { "useApifyProxy": false }
+        }
+    },
+    "required": ["urls"]
+}

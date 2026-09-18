@@ -1,0 +1,309 @@
+import { setTimeout as sleep } from 'node:timers/promises';
+
+import { PlaywrightCrawler } from '@crawlee/playwright';
+import { Actor, log } from 'apify';
+import type { Page } from 'playwright';
+
+import {
+    categorizeError,
+    COOKIE_BANNER_SELECTORS,
+    type ErrorType,
+    type Input,
+    normalizeUrl,
+    parseSettings,
+    recordKey,
+    type Settings,
+} from './options.js';
+
+const SCREENSHOT_EVENT = 'screenshot';
+const PDF_EVENT = 'pdf-rendered';
+
+interface SuccessItem {
+    url: string;
+    finalUrl: string;
+    success: true;
+    statusCode: number | null;
+    title: string | null;
+    screenshotUrl: string;
+    screenshotKey: string;
+    format: string;
+    width: number;
+    height: number;
+    fullPage: boolean;
+    device: string;
+    sizeBytes: number;
+    pdfUrl?: string;
+    pdfKey?: string;
+    pdfSizeBytes?: number;
+    renderTimeMs: number;
+    fetchedAt: string;
+}
+
+interface FailureItem {
+    url: string;
+    success: false;
+    errorType: ErrorType;
+    error: string;
+    statusCode?: number;
+    fetchedAt: string;
+}
+
+const MIME: Record<Settings['format'], string> = { png: 'image/png', jpeg: 'image/jpeg' };
+
+async function autoScroll(page: Page, maxSteps = 40): Promise<void> {
+    await page.evaluate(async (steps) => {
+        const delay = async (ms: number) =>
+            new Promise<void>((resolve) => {
+                setTimeout(resolve, ms);
+            });
+        let last = -1;
+        for (let i = 0; i < steps; i++) {
+            window.scrollBy(0, window.innerHeight);
+            await delay(120);
+            const h = document.documentElement.scrollHeight;
+            if (window.scrollY + window.innerHeight >= h && h === last) break;
+            last = h;
+        }
+        window.scrollTo(0, 0);
+    }, maxSteps);
+    await sleep(200);
+}
+
+async function imageDimensions(buffer: Buffer, format: Settings['format']): Promise<{ width: number; height: number }> {
+    try {
+        if (format === 'png' && buffer.length > 24 && buffer.toString('ascii', 1, 4) === 'PNG') {
+            return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
+        }
+        if (format === 'jpeg') {
+            let i = 2;
+            while (i < buffer.length) {
+                if (buffer[i] !== 0xff) break;
+                const marker = buffer[i + 1];
+                const len = buffer.readUInt16BE(i + 2);
+                if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+                    return { height: buffer.readUInt16BE(i + 5), width: buffer.readUInt16BE(i + 7) };
+                }
+                i += 2 + len;
+            }
+        }
+    } catch {
+        /* fall through */
+    }
+    return { width: 0, height: 0 };
+}
+
+await Actor.init();
+
+Actor.on('aborting', async () => {
+    await sleep(1000);
+    await Actor.exit();
+});
+
+const input = (await Actor.getInput<Input>()) ?? {};
+const settings = parseSettings(input);
+
+const rawUrls = (input.urls ?? []).map((u) => (typeof u === 'string' ? u : (u?.url ?? '')));
+if (rawUrls.length === 0) {
+    await Actor.fail('Input "urls" is empty. Provide at least one website URL, e.g. ["https://apify.com"].');
+}
+
+const requests: { url: string; uniqueKey: string; userData: { originalUrl: string; index: number } }[] = [];
+const seen = new Set<string>();
+const earlyFailures: FailureItem[] = [];
+let index = 0;
+for (const raw of rawUrls) {
+    const normalized = normalizeUrl(raw);
+    if (!normalized) {
+        earlyFailures.push({ url: raw, success: false, errorType: 'invalid-url', error: 'Not a valid website URL', fetchedAt: new Date().toISOString() });
+        continue;
+    }
+    if (seen.has(normalized)) continue;
+    seen.add(normalized);
+    index += 1;
+    requests.push({ url: normalized, uniqueKey: normalized, userData: { originalUrl: raw, index } });
+}
+if (earlyFailures.length) await Actor.pushData(earlyFailures);
+
+const env = Actor.getEnv();
+const storeId = env.defaultKeyValueStoreId ?? 'default';
+const store = await Actor.openKeyValueStore();
+const publicUrl = (key: string) => (env.isAtHome ? `https://api.apify.com/v2/key-value-stores/${storeId}/records/${key}` : store.getPublicUrl(key));
+
+log.info(`Rendering ${requests.length} page(s): device=${settings.device} ${settings.viewport.width}x${settings.viewport.height}@${settings.deviceScaleFactor}x, format=${settings.format}, fullPage=${settings.fullPage}, pdf=${settings.renderPdf}`);
+
+const proxyConfiguration = input.proxyConfiguration?.useApifyProxy || input.proxyConfiguration?.proxyUrls?.length
+    ? await Actor.createProxyConfiguration(input.proxyConfiguration)
+    : undefined;
+
+let rendered = 0;
+let charged = 0;
+let failed = 0;
+let stopBecauseOfBudget = false;
+
+const crawler = new PlaywrightCrawler({
+    proxyConfiguration,
+    maxConcurrency: settings.maxConcurrency,
+    maxRequestRetries: settings.maxRetries,
+    navigationTimeoutSecs: settings.timeoutSecs,
+    requestHandlerTimeoutSecs: settings.timeoutSecs + 60,
+    retryOnBlocked: false,
+    useSessionPool: true,
+    persistCookiesPerSession: false,
+    sessionPoolOptions: { blockedStatusCodes: [] },
+    launchContext: {
+        launchOptions: { args: ['--disable-gpu', '--disable-dev-shm-usage'] },
+    },
+    browserPoolOptions: {
+        // Deterministic rendering matters more than fingerprint randomisation for a screenshot tool
+        // (random fingerprints flip prefers-color-scheme and screen metrics).
+        useFingerprints: false,
+        prePageCreateHooks: [
+            /* eslint-disable no-param-reassign -- crawlee expects the options object to be mutated */
+            (_pageId, _browserController, pageOptions) => {
+                if (!pageOptions) return;
+                pageOptions.viewport = settings.viewport;
+                pageOptions.deviceScaleFactor = settings.deviceScaleFactor;
+                pageOptions.isMobile = settings.isMobile;
+                pageOptions.hasTouch = settings.hasTouch;
+                if (settings.userAgent) pageOptions.userAgent = settings.userAgent;
+                pageOptions.colorScheme = settings.darkMode ? 'dark' : 'light';
+                pageOptions.ignoreHTTPSErrors = true;
+            },
+            /* eslint-enable no-param-reassign */
+        ],
+    },
+    preNavigationHooks: [
+        async ({ page }, gotoOptions) => {
+            if (gotoOptions) {
+                /* eslint-disable no-param-reassign -- crawlee expects gotoOptions to be mutated */
+                // Navigate on 'load' (or faster); 'networkidle' is applied best-effort after navigation so that
+                // pages with long-polling or analytics beacons never time out the whole request.
+                gotoOptions.waitUntil = settings.waitUntil === 'domcontentloaded' ? 'domcontentloaded' : 'load';
+                gotoOptions.timeout = settings.timeoutSecs * 1000;
+                /* eslint-enable no-param-reassign */
+            }
+            await page.setViewportSize(settings.viewport);
+            await page.emulateMedia({ colorScheme: settings.darkMode ? 'dark' : 'light' });
+        },
+    ],
+    async requestHandler({ request, response, page }) {
+        if (stopBecauseOfBudget) return;
+        const started = Date.now();
+        const statusCode = response?.status() ?? null;
+
+        if (settings.waitUntil === 'networkidle') {
+            await page.waitForLoadState('networkidle', { timeout: Math.min(15000, settings.timeoutSecs * 500) }).catch(() => undefined);
+        }
+
+        if (settings.autoScroll && settings.fullPage) {
+            try {
+                await autoScroll(page);
+            } catch {
+                /* pages with scroll traps are fine to skip */
+            }
+        }
+        const hide = [...(settings.hideCookieBanners ? COOKIE_BANNER_SELECTORS : []), ...settings.hideSelectors];
+        if (hide.length) {
+            try {
+                await page.addStyleTag({ content: `${hide.join(',\n')} { display: none !important; visibility: hidden !important; }` });
+            } catch {
+                /* CSP may block inline styles; continue without hiding */
+            }
+        }
+        if (settings.delayMs) await sleep(settings.delayMs);
+
+        let buffer: Buffer;
+        if (settings.clipSelector) {
+            const el = await page.$(settings.clipSelector);
+            if (!el) throw new Error(`Element not found for clipSelector "${settings.clipSelector}"`);
+            buffer = await el.screenshot({ type: settings.format, quality: settings.quality, timeout: 30000 });
+        } else {
+            buffer = await page.screenshot({ type: settings.format, quality: settings.quality, fullPage: settings.fullPage, timeout: 45000, animations: 'disabled' });
+        }
+        if (!buffer || buffer.length < 100) throw new Error('Screenshot capture produced an empty image');
+
+        const ext = settings.format === 'jpeg' ? 'jpg' : settings.format;
+        const key = recordKey('screenshot', request.userData.index, request.loadedUrl ?? request.url, ext);
+        await store.setValue(key, buffer, { contentType: MIME[settings.format] });
+        const dims = await imageDimensions(buffer, settings.format);
+
+        const item: SuccessItem = {
+            url: request.userData.originalUrl,
+            finalUrl: request.loadedUrl ?? request.url,
+            success: true,
+            statusCode,
+            title: (await page.title().catch(() => null)) || null,
+            screenshotUrl: publicUrl(key),
+            screenshotKey: key,
+            format: settings.format,
+            width: dims.width,
+            height: dims.height,
+            fullPage: settings.fullPage && !settings.clipSelector,
+            device: settings.device,
+            sizeBytes: buffer.length,
+            renderTimeMs: 0,
+            fetchedAt: new Date().toISOString(),
+        };
+
+        let pdfCharge = 0;
+        if (settings.renderPdf) {
+            try {
+                await page.emulateMedia({ media: 'screen' });
+                const pdf = await page.pdf({ format: settings.pdfFormat, printBackground: true });
+                const pdfKey = recordKey('pdf', request.userData.index, item.finalUrl, 'pdf');
+                await store.setValue(pdfKey, pdf, { contentType: 'application/pdf' });
+                item.pdfUrl = publicUrl(pdfKey);
+                item.pdfKey = pdfKey;
+                item.pdfSizeBytes = pdf.length;
+                pdfCharge = 1;
+            } catch (err) {
+                log.warning(`${item.finalUrl}: PDF rendering failed (${(err as Error).message.slice(0, 120)}); screenshot still delivered.`);
+            }
+        }
+        item.renderTimeMs = Date.now() - started;
+
+        const result = await Actor.pushData(item, SCREENSHOT_EVENT);
+        rendered += 1;
+        charged += result.chargedCount ?? 0;
+        let limitReached = result.eventChargeLimitReached;
+        if (pdfCharge && !limitReached) {
+            const pdfResult = await Actor.charge({ eventName: PDF_EVENT });
+            limitReached = pdfResult.eventChargeLimitReached;
+        }
+        log.info(`${item.finalUrl}: ${dims.width}x${dims.height} ${settings.format} ${(buffer.length / 1024).toFixed(0)} KB in ${item.renderTimeMs} ms${item.pdfUrl ? ' + PDF' : ''}`);
+        if (limitReached) {
+            stopBecauseOfBudget = true;
+            log.warning('Maximum charge limit for this run reached; stopping early. Raise the run cost limit to render more pages.');
+            await crawler.autoscaledPool?.abort();
+        }
+    },
+    async failedRequestHandler({ request }, error) {
+        failed += 1;
+        const { statusCode } = error as { statusCode?: number };
+        const item: FailureItem = {
+            url: request.userData.originalUrl,
+            success: false,
+            errorType: categorizeError(error.message, statusCode),
+            error: error.message.split('\n')[0].slice(0, 500),
+            statusCode,
+            fetchedAt: new Date().toISOString(),
+        };
+        log.warning(`${request.url}: ${item.errorType} - ${item.error}`);
+        await Actor.pushData(item); // free of charge
+    },
+});
+
+await crawler.run(requests);
+
+const summary = {
+    requested: rawUrls.length,
+    rendered,
+    failed: failed + earlyFailures.length,
+    chargedScreenshots: charged,
+    stoppedEarlyDueToBudget: stopBecauseOfBudget,
+    keyValueStoreId: storeId,
+};
+await Actor.setValue('SUMMARY', summary);
+log.info(`Done. ${JSON.stringify(summary)}`);
+
+await Actor.exit();
