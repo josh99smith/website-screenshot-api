@@ -121,6 +121,18 @@
             "description": "Scroll through the page first so lazy-loaded images render in full-page screenshots.",
             "default": true
         },
+        "unstickFixed": {
+            "title": "Un-stick fixed and sticky elements",
+            "type": "boolean",
+            "description": "Un-stick fixed and sticky elements in full-page captures, so headers, navbars and floating bars appear once at their natural place instead of repeating or covering content. Only applies when Full page is on.",
+            "default": true
+        },
+        "waitForSelector": {
+            "title": "Wait for element (CSS selector)",
+            "type": "string",
+            "description": "Wait until this element exists before capturing, e.g. `.chart-rendered` or `#main img`. Waits up to the page timeout; if it never appears the page is still captured and the record gets a `warnings` entry.",
+            "editor": "textfield"
+        },
         "hideSelectors": {
             "title": "Hide elements (CSS selectors)",
             "type": "array",
@@ -161,6 +173,35 @@
             "maximum": 3,
             "description": "Retry a page that failed to load this many times before reporting it.",
             "editor": "number"
+        },
+        "cookies": {
+            "title": "Cookies",
+            "type": "array",
+            "description": "Cookies to set before loading each page, for logged-in or consent-preset captures. Playwright format: `[{\"name\": \"session\", \"value\": \"abc\", \"domain\": \".example.com\", \"path\": \"/\"}]`. Treated as secrets: values are never logged or stored in the output. Only use sessions you are allowed to use.",
+            "editor": "json",
+            "default": [],
+            "prefill": []
+        },
+        "extraHeaders": {
+            "title": "Extra HTTP headers",
+            "type": "object",
+            "description": "Headers sent with every request, e.g. `{\"Authorization\": \"Bearer ...\", \"Accept-Language\": \"de-DE\"}`. Treated as secrets: values are never logged or stored in the output.",
+            "editor": "json",
+            "default": {},
+            "prefill": {}
+        },
+        "blockResources": {
+            "title": "Block resource types",
+            "type": "array",
+            "description": "Abort requests for these resource types to speed up captures of heavy pages. Blocking `image`, `media` or `font` is usually safe; blocking `stylesheet`, `script` or `xhr` (XHR and fetch) changes how the page renders.",
+            "editor": "select",
+            "items": {
+                "type": "string",
+                "enum": ["image", "media", "font", "stylesheet", "script", "xhr"],
+                "enumTitles": ["Images", "Audio and video", "Fonts", "Stylesheets (changes rendering)", "Scripts (changes rendering)", "XHR and fetch (changes rendering)"]
+            },
+            "default": [],
+            "uniqueItems": true
         },
         "proxyConfiguration": {
             "title": "Proxy configuration",

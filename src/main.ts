@@ -36,6 +36,7 @@ interface SuccessItem {
     pdfKey?: string;
     pdfSizeBytes?: number;
     renderTimeMs: number;
+    warnings?: string[];
     fetchedAt: string;
 }
 
@@ -67,6 +68,35 @@ async function autoScroll(page: Page, maxSteps = 40): Promise<void> {
         window.scrollTo(0, 0);
     }, maxSteps);
     await sleep(200);
+}
+
+/**
+ * Turns `position: fixed` elements into `absolute` (keeping their computed offsets) and `sticky` ones into
+ * `relative`, so headers, navbars and floating bars appear exactly once in a full-page capture instead of
+ * repeating, covering content, or stretching with the enlarged viewport. Best effort: pages that forbid
+ * inline styles or run heavy layout scripts are left as they are.
+ */
+async function unstickFixedElements(page: Page): Promise<number> {
+    return page.evaluate(() => {
+        let changed = 0;
+        const all = document.querySelectorAll<HTMLElement>('body *');
+        for (const el of all) {
+            const style = window.getComputedStyle(el);
+            const { position } = style;
+            if (position === 'fixed') {
+                for (const prop of ['top', 'left', 'right', 'bottom'] as const) {
+                    const v = style[prop];
+                    if (v && v !== 'auto') el.style.setProperty(prop, v, 'important');
+                }
+                el.style.setProperty('position', 'absolute', 'important');
+                changed += 1;
+            } else if (position === 'sticky') {
+                el.style.setProperty('position', 'relative', 'important');
+                changed += 1;
+            }
+        }
+        return changed;
+    });
 }
 
 async function imageDimensions(buffer: Buffer, format: Settings['format']): Promise<{ width: number; height: number }> {
@@ -130,6 +160,14 @@ const store = await Actor.openKeyValueStore();
 const publicUrl = (key: string) => (env.isAtHome ? `https://api.apify.com/v2/key-value-stores/${storeId}/records/${key}` : store.getPublicUrl(key));
 
 log.info(`Rendering ${requests.length} page(s): device=${settings.device} ${settings.viewport.width}x${settings.viewport.height}@${settings.deviceScaleFactor}x, format=${settings.format}, fullPage=${settings.fullPage}, pdf=${settings.renderPdf}`);
+// Cookie and header values are secrets; only their counts are ever logged.
+if (settings.cookies.length || Object.keys(settings.extraHeaders).length || settings.blockResources.length || settings.waitForSelector) {
+    log.info(
+        `Options: cookies=${settings.cookies.length}, extraHeaders=${Object.keys(settings.extraHeaders).length}, blockResources=[${settings.blockResources.join(',')}]` +
+            `${settings.waitForSelector ? `, waitForSelector="${settings.waitForSelector}"` : ''}`,
+    );
+}
+const BLOCKED_TYPES = new Set<string>(settings.blockResources.flatMap((t) => (t === 'xhr' ? ['xhr', 'fetch'] : [t])));
 
 const proxyConfiguration = input.proxyConfiguration?.useApifyProxy || input.proxyConfiguration?.proxyUrls?.length
     ? await Actor.createProxyConfiguration(input.proxyConfiguration)
@@ -145,7 +183,7 @@ const crawler = new PlaywrightCrawler({
     maxConcurrency: settings.maxConcurrency,
     maxRequestRetries: settings.maxRetries,
     navigationTimeoutSecs: settings.timeoutSecs,
-    requestHandlerTimeoutSecs: settings.timeoutSecs + 60,
+    requestHandlerTimeoutSecs: settings.timeoutSecs + 60 + (settings.waitForSelector ? settings.timeoutSecs : 0),
     retryOnBlocked: false,
     useSessionPool: true,
     persistCookiesPerSession: false,
@@ -184,6 +222,14 @@ const crawler = new PlaywrightCrawler({
             }
             await page.setViewportSize(settings.viewport);
             await page.emulateMedia({ colorScheme: settings.darkMode ? 'dark' : 'light' });
+            if (settings.cookies.length) await page.context().addCookies(settings.cookies);
+            if (Object.keys(settings.extraHeaders).length) await page.setExtraHTTPHeaders(settings.extraHeaders);
+            if (BLOCKED_TYPES.size) {
+                await page.route('**/*', async (route) => {
+                    if (BLOCKED_TYPES.has(route.request().resourceType())) await route.abort('blockedbyclient');
+                    else await route.continue();
+                });
+            }
         },
     ],
     async requestHandler({ request, response, page }) {
@@ -191,15 +237,33 @@ const crawler = new PlaywrightCrawler({
         const started = Date.now();
         const statusCode = response?.status() ?? null;
 
+        const warnings: string[] = [];
+
         if (settings.waitUntil === 'networkidle') {
             await page.waitForLoadState('networkidle', { timeout: Math.min(15000, settings.timeoutSecs * 500) }).catch(() => undefined);
         }
+        if (settings.waitForSelector) {
+            try {
+                await page.waitForSelector(settings.waitForSelector, { state: 'attached', timeout: settings.timeoutSecs * 1000 });
+            } catch {
+                warnings.push('waitForSelector timed out');
+                log.warning(`${request.url}: selector "${settings.waitForSelector}" did not appear within ${settings.timeoutSecs} s; capturing anyway.`);
+            }
+        }
 
-        if (settings.autoScroll && settings.fullPage) {
+        const wholePage = settings.fullPage && !settings.clipSelector;
+        if (settings.autoScroll && wholePage) {
             try {
                 await autoScroll(page);
             } catch {
                 /* pages with scroll traps are fine to skip */
+            }
+        }
+        if (settings.unstickFixed && wholePage) {
+            try {
+                await unstickFixedElements(page);
+            } catch {
+                /* CSP or a detached frame; keep the original layout */
             }
         }
         const hide = [...(settings.hideCookieBanners ? COOKIE_BANNER_SELECTORS : []), ...settings.hideSelectors];
@@ -238,12 +302,13 @@ const crawler = new PlaywrightCrawler({
             format: settings.format,
             width: dims.width,
             height: dims.height,
-            fullPage: settings.fullPage && !settings.clipSelector,
+            fullPage: wholePage,
             device: settings.device,
             sizeBytes: buffer.length,
             renderTimeMs: 0,
             fetchedAt: new Date().toISOString(),
         };
+        if (warnings.length) item.warnings = warnings;
 
         let pdfCharge = 0;
         if (settings.renderPdf) {
@@ -270,7 +335,7 @@ const crawler = new PlaywrightCrawler({
             const pdfResult = await Actor.charge({ eventName: PDF_EVENT });
             limitReached = pdfResult.eventChargeLimitReached;
         }
-        log.info(`${item.finalUrl}: ${dims.width}x${dims.height} ${settings.format} ${(buffer.length / 1024).toFixed(0)} KB in ${item.renderTimeMs} ms${item.pdfUrl ? ' + PDF' : ''}`);
+        log.info(`${item.finalUrl}: ${dims.width}x${dims.height} ${settings.format} ${(buffer.length / 1024).toFixed(0)} KB in ${item.renderTimeMs} ms${item.pdfUrl ? ' + PDF' : ''}${warnings.length ? ` (warnings: ${warnings.join('; ')})` : ''}`);
         if (limitReached) {
             stopBecauseOfBudget = true;
             log.warning('Maximum charge limit for this run reached; stopping early. Raise the run cost limit to render more pages.');

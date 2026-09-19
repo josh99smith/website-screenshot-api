@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
-import { categorizeError, COOKIE_BANNER_SELECTORS, DEVICE_PRESETS, normalizeUrl, parseSettings, recordKey } from '../src/options.js';
+import {
+    categorizeError,
+    COOKIE_BANNER_SELECTORS,
+    DEVICE_PRESETS,
+    normalizeUrl,
+    parseBlockResources,
+    parseCookies,
+    parseHeaders,
+    parseSettings,
+    recordKey,
+} from '../src/options.js';
 
 describe('parseSettings', () => {
     it('applies laptop defaults for an empty input', () => {
@@ -14,6 +24,31 @@ describe('parseSettings', () => {
         expect(s.hideCookieBanners).toBe(true);
         expect(s.renderPdf).toBe(false);
         expect(s.maxConcurrency).toBe(5);
+        expect(s.unstickFixed).toBe(true);
+        expect(s.waitForSelector).toBeUndefined();
+        expect(s.cookies).toEqual([]);
+        expect(s.extraHeaders).toEqual({});
+        expect(s.blockResources).toEqual([]);
+    });
+
+    it('parses the wait / unstick / block options', () => {
+        const s = parseSettings({
+            unstickFixed: false,
+            waitForSelector: '  .loaded  ',
+            blockResources: ['image', 'font', 'image', 'bogus', 'SCRIPT'] as never,
+            cookies: [{ name: 'a', value: '1', domain: '.example.com' }],
+            extraHeaders: { 'Accept-Language': 'de-DE' },
+        });
+        expect(s.unstickFixed).toBe(false);
+        expect(s.waitForSelector).toBe('.loaded');
+        expect(s.blockResources).toEqual(['image', 'font', 'script']);
+        expect(s.cookies).toEqual([{ name: 'a', value: '1', domain: '.example.com', path: '/' }]);
+        expect(s.extraHeaders).toEqual({ 'Accept-Language': 'de-DE' });
+    });
+
+    it('treats a blank waitForSelector as unset', () => {
+        expect(parseSettings({ waitForSelector: '   ' }).waitForSelector).toBeUndefined();
+        expect(parseSettings({ waitForSelector: 42 as never }).waitForSelector).toBeUndefined();
     });
 
     it('uses the mobile preset with its user agent and scale factor', () => {
@@ -45,6 +80,62 @@ describe('parseSettings', () => {
         const s = parseSettings({ hideSelectors: [' .a ', '', '#b'], clipSelector: '  ' });
         expect(s.hideSelectors).toEqual(['.a', '#b']);
         expect(s.clipSelector).toBeUndefined();
+    });
+});
+
+describe('parseCookies', () => {
+    it('keeps well-formed cookies and defaults the path for domain cookies', () => {
+        const cookies = parseCookies([
+            { name: 'sid', value: 'abc', domain: 'example.com' },
+            { name: 'consent', value: 1, domain: '.example.com', path: '/shop', secure: true, httpOnly: false, sameSite: 'Lax', expires: 1900000000 },
+            { name: 'u', value: 'x', url: 'https://example.com/app' },
+        ]);
+        expect(cookies).toEqual([
+            { name: 'sid', value: 'abc', domain: 'example.com', path: '/' },
+            { name: 'consent', value: '1', domain: '.example.com', path: '/shop', secure: true, httpOnly: false, sameSite: 'Lax', expires: 1900000000 },
+            { name: 'u', value: 'x', url: 'https://example.com/app' },
+        ]);
+    });
+
+    it('drops cookies without a name, value or scope and non-object entries', () => {
+        expect(
+            parseCookies([
+                { value: 'x', domain: 'a.com' },
+                { name: 'n', domain: 'a.com' },
+                { name: 'n', value: 'v' },
+                { name: 'n', value: 'v', sameSite: 'weird', domain: 'a.com' },
+                'garbage',
+                null,
+            ]),
+        ).toEqual([{ name: 'n', value: 'v', domain: 'a.com', path: '/' }]);
+        expect(parseCookies(undefined)).toEqual([]);
+        expect(parseCookies({ name: 'n' })).toEqual([]);
+    });
+});
+
+describe('parseHeaders', () => {
+    it('keeps string, number and boolean values with valid header names', () => {
+        expect(parseHeaders({ Authorization: 'Bearer t', 'X-Count': 3, 'X-Flag': true, ' X-Trim ': 'v' })).toEqual({
+            Authorization: 'Bearer t',
+            'X-Count': '3',
+            'X-Flag': 'true',
+            'X-Trim': 'v',
+        });
+    });
+
+    it('drops blank, nested and invalid-name headers', () => {
+        expect(parseHeaders({ 'Bad Name': 'v', 'X-Empty': '', 'X-Obj': { a: 1 }, 'X-Null': null })).toEqual({});
+        expect(parseHeaders(undefined)).toEqual({});
+        expect(parseHeaders(['a'])).toEqual({});
+        expect(parseHeaders('Authorization: x')).toEqual({});
+    });
+});
+
+describe('parseBlockResources', () => {
+    it('normalises, de-duplicates and filters unknown types', () => {
+        expect(parseBlockResources(['image', ' Media ', 'image', 'xhr', 'html', 5])).toEqual(['image', 'media', 'xhr']);
+        expect(parseBlockResources('image')).toEqual([]);
+        expect(parseBlockResources(undefined)).toEqual([]);
     });
 });
 

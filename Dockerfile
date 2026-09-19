@@ -55,5 +55,11 @@ COPY --from=builder --chown=myuser:myuser /home/myuser/dist ./dist
 # for most source file changes.
 COPY --chown=myuser:myuser . ./
 
+# Colour emoji and CJK fonts so that emoji and Chinese / Japanese / Korean text render
+# instead of showing as empty boxes (the base image only ships Latin fonts).
+USER root
+RUN apt-get update     && apt-get install -y --no-install-recommends fonts-noto-color-emoji fonts-noto-cjk fonts-liberation     && rm -rf /var/lib/apt/lists/*
+USER myuser
+
 # Run the image.
 CMD ["node", "dist/main.js"]

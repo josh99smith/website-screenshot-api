@@ -78,6 +78,11 @@
                 "type": "integer",
                 "description": "Milliseconds spent loading, preparing and capturing the page."
             },
+            "warnings": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Non-fatal problems during capture, e.g. 'waitForSelector timed out'. Present only when there was at least one."
+            },
             "errorType": {
                 "type": "string",
                 "description": "Failure category when success is false.",
@@ -94,7 +99,7 @@
         "overview": {
             "title": "Screenshots",
             "transformation": {
-                "fields": ["screenshotUrl", "url", "success", "title", "width", "height", "sizeBytes", "pdfUrl", "statusCode", "errorType", "error"]
+                "fields": ["screenshotUrl", "url", "success", "title", "width", "height", "sizeBytes", "pdfUrl", "statusCode", "warnings", "errorType", "error"]
             },
             "display": {
                 "component": "table",
@@ -108,6 +113,7 @@
                     "sizeBytes": { "label": "Bytes", "format": "number" },
                     "pdfUrl": { "label": "PDF", "format": "link" },
                     "statusCode": { "label": "HTTP status", "format": "number" },
+                    "warnings": { "label": "Warnings", "format": "array" },
                     "errorType": { "label": "Error type", "format": "text" },
                     "error": { "label": "Error", "format": "text" }
                 }

@@ -3,6 +3,22 @@
 export type ImageFormat = 'png' | 'jpeg';
 export type Device = 'desktop' | 'laptop' | 'tablet' | 'mobile' | 'custom';
 export type WaitUntil = 'load' | 'domcontentloaded' | 'networkidle';
+export type BlockableResource = 'image' | 'media' | 'font' | 'stylesheet' | 'script' | 'xhr';
+
+export const BLOCKABLE_RESOURCES: readonly BlockableResource[] = ['image', 'media', 'font', 'stylesheet', 'script', 'xhr'];
+
+/** A Playwright cookie as accepted by `context.addCookies`. */
+export interface CookieInput {
+    name: string;
+    value: string;
+    domain?: string;
+    path?: string;
+    url?: string;
+    expires?: number;
+    httpOnly?: boolean;
+    secure?: boolean;
+    sameSite?: 'Strict' | 'Lax' | 'None';
+}
 
 export interface Input {
     urls?: (string | { url: string })[];
@@ -19,12 +35,17 @@ export interface Input {
     hideCookieBanners?: boolean;
     hideSelectors?: string[];
     clipSelector?: string;
+    unstickFixed?: boolean;
+    waitForSelector?: string;
     darkMode?: boolean;
     renderPdf?: boolean;
     pdfFormat?: 'A4' | 'Letter' | 'Legal';
     maxConcurrency?: number;
     timeoutSecs?: number;
     maxRetries?: number;
+    cookies?: unknown;
+    extraHeaders?: unknown;
+    blockResources?: unknown;
     proxyConfiguration?: { useApifyProxy?: boolean; apifyProxyGroups?: string[]; apifyProxyCountry?: string; proxyUrls?: string[] };
 }
 
@@ -44,12 +65,17 @@ export interface Settings {
     hideCookieBanners: boolean;
     hideSelectors: string[];
     clipSelector?: string;
+    unstickFixed: boolean;
+    waitForSelector?: string;
     darkMode: boolean;
     renderPdf: boolean;
     pdfFormat: 'A4' | 'Letter' | 'Legal';
     maxConcurrency: number;
     timeoutSecs: number;
     maxRetries: number;
+    cookies: CookieInput[];
+    extraHeaders: Record<string, string>;
+    blockResources: BlockableResource[];
 }
 
 const MOBILE_UA =
@@ -92,13 +118,79 @@ export function parseSettings(input: Input): Settings {
         hideCookieBanners: input.hideCookieBanners ?? true,
         hideSelectors: (input.hideSelectors ?? []).map((s) => s.trim()).filter(Boolean),
         clipSelector: input.clipSelector?.trim() || undefined,
+        unstickFixed: input.unstickFixed ?? true,
+        waitForSelector: typeof input.waitForSelector === 'string' && input.waitForSelector.trim() ? input.waitForSelector.trim() : undefined,
         darkMode: input.darkMode ?? false,
         renderPdf: input.renderPdf ?? false,
         pdfFormat: input.pdfFormat === 'Letter' || input.pdfFormat === 'Legal' ? input.pdfFormat : 'A4',
         maxConcurrency: clamp(input.maxConcurrency, 5, 1, 20),
         timeoutSecs: clamp(input.timeoutSecs, 60, 10, 180),
         maxRetries: clamp(input.maxRetries, 1, 0, 3),
+        cookies: parseCookies(input.cookies),
+        extraHeaders: parseHeaders(input.extraHeaders),
+        blockResources: parseBlockResources(input.blockResources),
     };
+}
+
+const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+
+/**
+ * Keeps only well-formed cookie objects. A cookie needs `name`, `value` and either `url` or `domain`
+ * (Playwright rejects cookies without a scope); `domain` cookies default to path `/`.
+ */
+export function parseCookies(raw: unknown): CookieInput[] {
+    if (!Array.isArray(raw)) return [];
+    const cookies: CookieInput[] = [];
+    for (const entry of raw) {
+        if (!isRecord(entry)) continue;
+        const name = typeof entry.name === 'string' ? entry.name.trim() : '';
+        if (!name || entry.value === undefined || entry.value === null) continue;
+        const value = typeof entry.value === 'string' ? entry.value : String(entry.value);
+        const domain = typeof entry.domain === 'string' && entry.domain.trim() ? entry.domain.trim() : undefined;
+        const url = typeof entry.url === 'string' && entry.url.trim() ? entry.url.trim() : undefined;
+        if (!domain && !url) continue;
+        const cookie: CookieInput = { name, value };
+        if (url) cookie.url = url;
+        if (domain) {
+            cookie.domain = domain;
+            cookie.path = typeof entry.path === 'string' && entry.path.trim() ? entry.path.trim() : '/';
+        } else if (typeof entry.path === 'string' && entry.path.trim()) {
+            cookie.path = entry.path.trim();
+        }
+        if (typeof entry.expires === 'number' && Number.isFinite(entry.expires)) cookie.expires = entry.expires;
+        if (typeof entry.httpOnly === 'boolean') cookie.httpOnly = entry.httpOnly;
+        if (typeof entry.secure === 'boolean') cookie.secure = entry.secure;
+        if (entry.sameSite === 'Strict' || entry.sameSite === 'Lax' || entry.sameSite === 'None') cookie.sameSite = entry.sameSite;
+        cookies.push(cookie);
+    }
+    return cookies;
+}
+
+/** Keeps string-valued headers with a syntactically valid name; other values are stringified, blanks dropped. */
+export function parseHeaders(raw: unknown): Record<string, string> {
+    if (!isRecord(raw)) return {};
+    const headers: Record<string, string> = {};
+    for (const [key, value] of Object.entries(raw)) {
+        const name = key.trim();
+        if (!/^[A-Za-z0-9!#$%&'*+.^_`|~-]+$/.test(name)) continue;
+        let text = '';
+        if (typeof value === 'string') text = value;
+        else if (typeof value === 'number' || typeof value === 'boolean') text = String(value);
+        if (!text) continue;
+        headers[name] = text;
+    }
+    return headers;
+}
+
+export function parseBlockResources(raw: unknown): BlockableResource[] {
+    if (!Array.isArray(raw)) return [];
+    const out = new Set<BlockableResource>();
+    for (const entry of raw) {
+        if (typeof entry !== 'string') continue;
+        const key = entry.trim().toLowerCase() as BlockableResource;
+        if (BLOCKABLE_RESOURCES.includes(key)) out.add(key);
+    }
+    return [...out];
 }
 
 export function normalizeUrl(raw: string): string | null {
