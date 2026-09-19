@@ -264,7 +264,7 @@ const crawler = new PlaywrightCrawler({
 
         const result = await Actor.pushData(item, SCREENSHOT_EVENT);
         rendered += 1;
-        charged += result.chargedCount ?? 0;
+        charged += 1;
         let limitReached = result.eventChargeLimitReached;
         if (pdfCharge && !limitReached) {
             const pdfResult = await Actor.charge({ eventName: PDF_EVENT });

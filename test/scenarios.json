@@ -1,0 +1,154 @@
+{
+    "happy-path": {
+        "input": {
+            "urls": [
+                "https://apify.com",
+                "https://www.wikipedia.org",
+                "https://github.com"
+            ]
+        },
+        "memoryMbytes": 2048,
+        "expect": {
+            "status": "SUCCEEDED",
+            "minOk": 3,
+            "maxFailed": 0,
+            "maxDurationSecs": 150
+        }
+    },
+    "mobile-jpeg-viewport-pdf": {
+        "input": {
+            "urls": [
+                "https://www.wikipedia.org",
+                "https://news.ycombinator.com"
+            ],
+            "device": "mobile",
+            "format": "jpeg",
+            "quality": 60,
+            "fullPage": false,
+            "renderPdf": true,
+            "pdfFormat": "Letter",
+            "darkMode": true
+        },
+        "memoryMbytes": 2048,
+        "expect": {
+            "status": "SUCCEEDED",
+            "minOk": 2,
+            "maxFailed": 0
+        }
+    },
+    "custom-viewport-clip-hide": {
+        "input": {
+            "urls": [
+                "https://news.ycombinator.com"
+            ],
+            "device": "custom",
+            "viewportWidth": 800,
+            "viewportHeight": 600,
+            "deviceScaleFactor": 2,
+            "clipSelector": "table",
+            "hideSelectors": [
+                ".yclinks"
+            ],
+            "waitUntil": "domcontentloaded",
+            "delayMs": 0,
+            "autoScroll": false
+        },
+        "memoryMbytes": 2048,
+        "expect": {
+            "status": "SUCCEEDED",
+            "minOk": 1,
+            "maxFailed": 0
+        }
+    },
+    "clip-selector-missing": {
+        "input": {
+            "urls": [
+                "https://example.com"
+            ],
+            "clipSelector": "#does-not-exist-xyz",
+            "maxRetries": 0
+        },
+        "memoryMbytes": 1024,
+        "expect": {
+            "status": "SUCCEEDED",
+            "maxOk": 0,
+            "errorTypes": [
+                "other"
+            ]
+        }
+    },
+    "bad-and-dead-urls": {
+        "input": {
+            "urls": [
+                "bad url",
+                "https://this-domain-does-not-exist-abc123.com",
+                "https://httpbin.org/status/500",
+                "https://httpbin.org/delay/30"
+            ],
+            "timeoutSecs": 15,
+            "maxRetries": 0
+        },
+        "memoryMbytes": 1024,
+        "expect": {
+            "status": "SUCCEEDED",
+            "errorTypes": [
+                "invalid-url",
+                "dns",
+                "network",
+                "timeout",
+                "http-error",
+                "other"
+            ]
+        }
+    },
+    "heavy-pages-concurrency": {
+        "input": {
+            "urls": [
+                "https://www.amazon.com",
+                "https://www.cnn.com",
+                "https://www.theverge.com",
+                "https://www.bbc.co.uk",
+                "https://www.apple.com",
+                "https://www.reddit.com"
+            ],
+            "maxConcurrency": 3,
+            "timeoutSecs": 60
+        },
+        "memoryMbytes": 4096,
+        "expect": {
+            "status": "SUCCEEDED",
+            "minOk": 4,
+            "maxDurationSecs": 300
+        }
+    },
+    "budget-cap": {
+        "input": {
+            "urls": [
+                "https://example.com",
+                "https://example.org",
+                "https://example.net",
+                "https://www.iana.org",
+                "https://www.wikipedia.org"
+            ],
+            "maxConcurrency": 1,
+            "fullPage": false
+        },
+        "memoryMbytes": 1024,
+        "maxTotalChargeUsd": 0.011,
+        "expect": {
+            "status": "SUCCEEDED",
+            "maxItems": 3,
+            "stoppedEarlyDueToBudget": true
+        }
+    },
+    "empty-input": {
+        "input": {
+            "urls": []
+        },
+        "memoryMbytes": 1024,
+        "expect": {
+            "status": "FAILED",
+            "maxItems": 0
+        }
+    }
+}
