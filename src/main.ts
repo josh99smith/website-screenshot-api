@@ -9,6 +9,7 @@ import {
     COOKIE_BANNER_SELECTORS,
     type ErrorType,
     type Input,
+    isSameSite,
     normalizeUrl,
     parseSettings,
     recordKey,
@@ -52,50 +53,87 @@ interface FailureItem {
 const MIME: Record<Settings['format'], string> = { png: 'image/png', jpeg: 'image/jpeg' };
 
 async function autoScroll(page: Page, maxSteps = 40): Promise<void> {
+    // No named inner functions inside evaluate(): tsx/esbuild would inject a `__name` helper that does not exist in the page.
+    // Scrolling is 'instant' because pages with `scroll-behavior: smooth` would otherwise still be animating back to
+    // the top when the screenshot is taken, leaving a blank band and misplaced fixed elements.
     await page.evaluate(async (steps) => {
-        const delay = async (ms: number) =>
-            new Promise<void>((resolve) => {
-                setTimeout(resolve, ms);
-            });
         let last = -1;
         for (let i = 0; i < steps; i++) {
-            window.scrollBy(0, window.innerHeight);
-            await delay(120);
+            window.scrollBy({ top: window.innerHeight, behavior: 'instant' });
+            await new Promise<void>((resolve) => {
+                setTimeout(resolve, 120);
+            });
             const h = document.documentElement.scrollHeight;
             if (window.scrollY + window.innerHeight >= h && h === last) break;
             last = h;
         }
-        window.scrollTo(0, 0);
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     }, maxSteps);
     await sleep(200);
+    await page.evaluate(() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' }));
 }
 
 /**
- * Turns `position: fixed` elements into `absolute` (keeping their computed offsets) and `sticky` ones into
- * `relative`, so headers, navbars and floating bars appear exactly once in a full-page capture instead of
- * repeating, covering content, or stretching with the enlarged viewport. Best effort: pages that forbid
- * inline styles or run heavy layout scripts are left as they are.
+ * Pins `position: fixed` elements to one spot in the document and turns `sticky` ones into `relative`, so
+ * headers, navbars, cookie bars and chat bubbles appear exactly once in a full-page capture: top-anchored
+ * elements stay where they are on first view, bottom-anchored ones move to the end of the page instead of
+ * floating in the middle of the image. Best effort: pages that forbid inline styles are left as they are.
  */
 async function unstickFixedElements(page: Page): Promise<number> {
     return page.evaluate(() => {
-        let changed = 0;
-        const all = document.querySelectorAll<HTMLElement>('body *');
-        for (const el of all) {
-            const style = window.getComputedStyle(el);
-            const { position } = style;
-            if (position === 'fixed') {
-                for (const prop of ['top', 'left', 'right', 'bottom'] as const) {
-                    const v = style[prop];
-                    if (v && v !== 'auto') el.style.setProperty(prop, v, 'important');
-                }
-                el.style.setProperty('position', 'absolute', 'important');
-                changed += 1;
-            } else if (position === 'sticky') {
-                el.style.setProperty('position', 'relative', 'important');
-                changed += 1;
-            }
+        const docHeight = document.documentElement.scrollHeight;
+        const viewportHeight = window.innerHeight;
+        const viewportWidth = window.innerWidth;
+        const fixed: { el: HTMLElement; rect: DOMRect }[] = [];
+        const sticky: HTMLElement[] = [];
+        for (const el of document.querySelectorAll<HTMLElement>('body *')) {
+            const { position } = window.getComputedStyle(el);
+            if (position === 'fixed') fixed.push({ el, rect: el.getBoundingClientRect() });
+            else if (position === 'sticky') sticky.push(el);
         }
-        return changed;
+        // Measure everything first, then mutate, so earlier changes do not shift later measurements.
+        for (const el of sticky) el.style.setProperty('position', 'relative', 'important');
+        for (const { el, rect } of fixed) {
+            if (rect.width === 0 && rect.height === 0) continue;
+            const { style } = el;
+            // Off-screen drawers and menus stay invisible; as absolute boxes they would land inside the tall capture.
+            if (rect.right <= 0 || rect.left >= viewportWidth || rect.bottom <= 0 || rect.top >= viewportHeight) {
+                style.setProperty('visibility', 'hidden', 'important');
+                continue;
+            }
+            // Pin the box at its current size, move it to the origin of whatever its containing block turns out
+            // to be, measure where that origin lands, then offset from there. This sidesteps guessing which
+            // ancestor (positioned, transformed, contained, ...) establishes the containing block.
+            style.setProperty('transition', 'none', 'important');
+            style.setProperty('animation', 'none', 'important');
+            style.setProperty('position', 'absolute', 'important');
+            style.setProperty('top', '0px', 'important');
+            style.setProperty('left', '0px', 'important');
+            style.setProperty('right', 'auto', 'important');
+            style.setProperty('bottom', 'auto', 'important');
+            // A box parked partly outside the right edge (reCAPTCHA badges, side tabs) must not widen the page.
+            const width = rect.right > viewportWidth ? viewportWidth - Math.max(0, rect.left) : rect.width;
+            if (width !== rect.width) style.setProperty('overflow', 'hidden', 'important');
+            style.setProperty('width', `${width}px`, 'important');
+            style.setProperty('height', `${rect.height}px`, 'important');
+            style.setProperty('margin', '0', 'important');
+            style.setProperty('transform', 'none', 'important');
+            const origin = el.getBoundingClientRect();
+            const originTop = origin.top + window.scrollY;
+            const originLeft = origin.left + window.scrollX;
+            // Only bars and bubbles that hug the bottom edge and hang off the document itself move to the page end;
+            // anything inside a positioned ancestor stays put so overflow clipping cannot hide it.
+            const documentLevel = el.offsetParent === document.body || el.offsetParent === null;
+            const anchoredToBottom =
+                documentLevel && rect.bottom >= viewportHeight - 100 && rect.top > viewportHeight / 2;
+            const docTop = anchoredToBottom
+                ? docHeight - (viewportHeight - rect.bottom) - rect.height
+                : rect.top + window.scrollY;
+            const docLeft = rect.left + window.scrollX;
+            style.setProperty('top', `${(documentLevel ? Math.max(0, docTop) : docTop) - originTop}px`, 'important');
+            style.setProperty('left', `${docLeft - originLeft}px`, 'important');
+        }
+        return fixed.length + sticky.length;
     });
 }
 
@@ -144,7 +182,13 @@ let index = 0;
 for (const raw of rawUrls) {
     const normalized = normalizeUrl(raw);
     if (!normalized) {
-        earlyFailures.push({ url: raw, success: false, errorType: 'invalid-url', error: 'Not a valid website URL', fetchedAt: new Date().toISOString() });
+        earlyFailures.push({
+            url: raw,
+            success: false,
+            errorType: 'invalid-url',
+            error: 'Not a valid website URL',
+            fetchedAt: new Date().toISOString(),
+        });
         continue;
     }
     if (seen.has(normalized)) continue;
@@ -157,21 +201,31 @@ if (earlyFailures.length) await Actor.pushData(earlyFailures);
 const env = Actor.getEnv();
 const storeId = env.defaultKeyValueStoreId ?? 'default';
 const store = await Actor.openKeyValueStore();
-const publicUrl = (key: string) => (env.isAtHome ? `https://api.apify.com/v2/key-value-stores/${storeId}/records/${key}` : store.getPublicUrl(key));
+const publicUrl = (key: string) =>
+    env.isAtHome ? `https://api.apify.com/v2/key-value-stores/${storeId}/records/${key}` : store.getPublicUrl(key);
 
-log.info(`Rendering ${requests.length} page(s): device=${settings.device} ${settings.viewport.width}x${settings.viewport.height}@${settings.deviceScaleFactor}x, format=${settings.format}, fullPage=${settings.fullPage}, pdf=${settings.renderPdf}`);
+log.info(
+    `Rendering ${requests.length} page(s): device=${settings.device} ${settings.viewport.width}x${settings.viewport.height}@${settings.deviceScaleFactor}x, format=${settings.format}, fullPage=${settings.fullPage}, pdf=${settings.renderPdf}`,
+);
 // Cookie and header values are secrets; only their counts are ever logged.
-if (settings.cookies.length || Object.keys(settings.extraHeaders).length || settings.blockResources.length || settings.waitForSelector) {
+if (
+    settings.cookies.length ||
+    Object.keys(settings.extraHeaders).length ||
+    settings.blockResources.length ||
+    settings.waitForSelector
+) {
     log.info(
         `Options: cookies=${settings.cookies.length}, extraHeaders=${Object.keys(settings.extraHeaders).length}, blockResources=[${settings.blockResources.join(',')}]` +
             `${settings.waitForSelector ? `, waitForSelector="${settings.waitForSelector}"` : ''}`,
     );
 }
 const BLOCKED_TYPES = new Set<string>(settings.blockResources.flatMap((t) => (t === 'xhr' ? ['xhr', 'fetch'] : [t])));
+const HAS_EXTRA_HEADERS = Object.keys(settings.extraHeaders).length > 0;
 
-const proxyConfiguration = input.proxyConfiguration?.useApifyProxy || input.proxyConfiguration?.proxyUrls?.length
-    ? await Actor.createProxyConfiguration(input.proxyConfiguration)
-    : undefined;
+const proxyConfiguration =
+    input.proxyConfiguration?.useApifyProxy || input.proxyConfiguration?.proxyUrls?.length
+        ? await Actor.createProxyConfiguration(input.proxyConfiguration)
+        : undefined;
 
 let rendered = 0;
 let charged = 0;
@@ -211,7 +265,7 @@ const crawler = new PlaywrightCrawler({
         ],
     },
     preNavigationHooks: [
-        async ({ page }, gotoOptions) => {
+        async ({ page, request }, gotoOptions) => {
             if (gotoOptions) {
                 /* eslint-disable no-param-reassign -- crawlee expects gotoOptions to be mutated */
                 // Navigate on 'load' (or faster); 'networkidle' is applied best-effort after navigation so that
@@ -223,11 +277,22 @@ const crawler = new PlaywrightCrawler({
             await page.setViewportSize(settings.viewport);
             await page.emulateMedia({ colorScheme: settings.darkMode ? 'dark' : 'light' });
             if (settings.cookies.length) await page.context().addCookies(settings.cookies);
-            if (Object.keys(settings.extraHeaders).length) await page.setExtraHTTPHeaders(settings.extraHeaders);
-            if (BLOCKED_TYPES.size) {
+            if (BLOCKED_TYPES.size || HAS_EXTRA_HEADERS) {
+                // Extra headers go only to the page's own site. Sending custom headers to third-party hosts
+                // (via setExtraHTTPHeaders) forces CORS preflights that CDNs reject, so stylesheets fail to
+                // load, and it would leak Authorization tokens to trackers and CDNs.
+                const pageHost = new URL(request.url).hostname;
                 await page.route('**/*', async (route) => {
-                    if (BLOCKED_TYPES.has(route.request().resourceType())) await route.abort('blockedbyclient');
-                    else await route.continue();
+                    const req = route.request();
+                    if (BLOCKED_TYPES.has(req.resourceType())) {
+                        await route.abort('blockedbyclient');
+                        return;
+                    }
+                    if (HAS_EXTRA_HEADERS && isSameSite(new URL(req.url()).hostname, pageHost)) {
+                        await route.continue({ headers: { ...req.headers(), ...settings.extraHeaders } });
+                        return;
+                    }
+                    await route.continue();
                 });
             }
         },
@@ -240,14 +305,21 @@ const crawler = new PlaywrightCrawler({
         const warnings: string[] = [];
 
         if (settings.waitUntil === 'networkidle') {
-            await page.waitForLoadState('networkidle', { timeout: Math.min(15000, settings.timeoutSecs * 500) }).catch(() => undefined);
+            await page
+                .waitForLoadState('networkidle', { timeout: Math.min(15000, settings.timeoutSecs * 500) })
+                .catch(() => undefined);
         }
         if (settings.waitForSelector) {
             try {
-                await page.waitForSelector(settings.waitForSelector, { state: 'attached', timeout: settings.timeoutSecs * 1000 });
+                await page.waitForSelector(settings.waitForSelector, {
+                    state: 'attached',
+                    timeout: settings.timeoutSecs * 1000,
+                });
             } catch {
                 warnings.push('waitForSelector timed out');
-                log.warning(`${request.url}: selector "${settings.waitForSelector}" did not appear within ${settings.timeoutSecs} s; capturing anyway.`);
+                log.warning(
+                    `${request.url}: selector "${settings.waitForSelector}" did not appear within ${settings.timeoutSecs} s; capturing anyway.`,
+                );
             }
         }
 
@@ -269,7 +341,9 @@ const crawler = new PlaywrightCrawler({
         const hide = [...(settings.hideCookieBanners ? COOKIE_BANNER_SELECTORS : []), ...settings.hideSelectors];
         if (hide.length) {
             try {
-                await page.addStyleTag({ content: `${hide.join(',\n')} { display: none !important; visibility: hidden !important; }` });
+                await page.addStyleTag({
+                    content: `${hide.join(',\n')} { display: none !important; visibility: hidden !important; }`,
+                });
             } catch {
                 /* CSP may block inline styles; continue without hiding */
             }
@@ -282,7 +356,13 @@ const crawler = new PlaywrightCrawler({
             if (!el) throw new Error(`Element not found for clipSelector "${settings.clipSelector}"`);
             buffer = await el.screenshot({ type: settings.format, quality: settings.quality, timeout: 30000 });
         } else {
-            buffer = await page.screenshot({ type: settings.format, quality: settings.quality, fullPage: settings.fullPage, timeout: 45000, animations: 'disabled' });
+            buffer = await page.screenshot({
+                type: settings.format,
+                quality: settings.quality,
+                fullPage: settings.fullPage,
+                timeout: 45000,
+                animations: 'disabled',
+            });
         }
         if (!buffer || buffer.length < 100) throw new Error('Screenshot capture produced an empty image');
 
@@ -322,7 +402,9 @@ const crawler = new PlaywrightCrawler({
                 item.pdfSizeBytes = pdf.length;
                 pdfCharge = 1;
             } catch (err) {
-                log.warning(`${item.finalUrl}: PDF rendering failed (${(err as Error).message.slice(0, 120)}); screenshot still delivered.`);
+                log.warning(
+                    `${item.finalUrl}: PDF rendering failed (${(err as Error).message.slice(0, 120)}); screenshot still delivered.`,
+                );
             }
         }
         item.renderTimeMs = Date.now() - started;
@@ -335,10 +417,14 @@ const crawler = new PlaywrightCrawler({
             const pdfResult = await Actor.charge({ eventName: PDF_EVENT });
             limitReached = pdfResult.eventChargeLimitReached;
         }
-        log.info(`${item.finalUrl}: ${dims.width}x${dims.height} ${settings.format} ${(buffer.length / 1024).toFixed(0)} KB in ${item.renderTimeMs} ms${item.pdfUrl ? ' + PDF' : ''}${warnings.length ? ` (warnings: ${warnings.join('; ')})` : ''}`);
+        log.info(
+            `${item.finalUrl}: ${dims.width}x${dims.height} ${settings.format} ${(buffer.length / 1024).toFixed(0)} KB in ${item.renderTimeMs} ms${item.pdfUrl ? ' + PDF' : ''}${warnings.length ? ` (warnings: ${warnings.join('; ')})` : ''}`,
+        );
         if (limitReached) {
             stopBecauseOfBudget = true;
-            log.warning('Maximum charge limit for this run reached; stopping early. Raise the run cost limit to render more pages.');
+            log.warning(
+                'Maximum charge limit for this run reached; stopping early. Raise the run cost limit to render more pages.',
+            );
             await crawler.autoscaledPool?.abort();
         }
     },

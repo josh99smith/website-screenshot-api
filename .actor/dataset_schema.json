@@ -99,7 +99,20 @@
         "overview": {
             "title": "Screenshots",
             "transformation": {
-                "fields": ["screenshotUrl", "url", "success", "title", "width", "height", "sizeBytes", "pdfUrl", "statusCode", "warnings", "errorType", "error"]
+                "fields": [
+                    "screenshotUrl",
+                    "url",
+                    "success",
+                    "title",
+                    "width",
+                    "height",
+                    "sizeBytes",
+                    "pdfUrl",
+                    "statusCode",
+                    "warnings",
+                    "errorType",
+                    "error"
+                ]
             },
             "display": {
                 "component": "table",

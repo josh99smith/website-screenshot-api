@@ -1,11 +1,7 @@
 {
     "happy-path": {
         "input": {
-            "urls": [
-                "https://apify.com",
-                "https://www.wikipedia.org",
-                "https://github.com"
-            ]
+            "urls": ["https://apify.com", "https://www.wikipedia.org", "https://github.com"]
         },
         "memoryMbytes": 2048,
         "expect": {
@@ -17,10 +13,7 @@
     },
     "mobile-jpeg-viewport-pdf": {
         "input": {
-            "urls": [
-                "https://www.wikipedia.org",
-                "https://news.ycombinator.com"
-            ],
+            "urls": ["https://www.wikipedia.org", "https://news.ycombinator.com"],
             "device": "mobile",
             "format": "jpeg",
             "quality": 60,
@@ -38,17 +31,13 @@
     },
     "custom-viewport-clip-hide": {
         "input": {
-            "urls": [
-                "https://news.ycombinator.com"
-            ],
+            "urls": ["https://news.ycombinator.com"],
             "device": "custom",
             "viewportWidth": 800,
             "viewportHeight": 600,
             "deviceScaleFactor": 2,
             "clipSelector": "table",
-            "hideSelectors": [
-                ".yclinks"
-            ],
+            "hideSelectors": [".yclinks"],
             "waitUntil": "domcontentloaded",
             "delayMs": 0,
             "autoScroll": false
@@ -62,9 +51,7 @@
     },
     "clip-selector-missing": {
         "input": {
-            "urls": [
-                "https://example.com"
-            ],
+            "urls": ["https://example.com"],
             "clipSelector": "#does-not-exist-xyz",
             "maxRetries": 0
         },
@@ -72,9 +59,7 @@
         "expect": {
             "status": "SUCCEEDED",
             "maxOk": 0,
-            "errorTypes": [
-                "other"
-            ]
+            "errorTypes": ["other"]
         }
     },
     "bad-and-dead-urls": {
@@ -91,14 +76,7 @@
         "memoryMbytes": 1024,
         "expect": {
             "status": "SUCCEEDED",
-            "errorTypes": [
-                "invalid-url",
-                "dns",
-                "network",
-                "timeout",
-                "http-error",
-                "other"
-            ]
+            "errorTypes": ["invalid-url", "dns", "network", "timeout", "http-error", "other"]
         }
     },
     "heavy-pages-concurrency": {
@@ -149,6 +127,60 @@
         "expect": {
             "status": "FAILED",
             "maxItems": 0
+        }
+    },
+    "fixes-sticky-wait-cookies": {
+        "input": {
+            "urls": ["https://github.com", "https://httpbin.org/cookies", "https://httpbin.org/headers"],
+            "fullPage": true,
+            "waitForSelector": "body",
+            "cookies": [
+                {
+                    "name": "screenshot_test_cookie",
+                    "value": "1",
+                    "domain": "httpbin.org",
+                    "path": "/"
+                }
+            ],
+            "extraHeaders": {
+                "X-Screenshot-Test": "1"
+            },
+            "maxRetries": 0
+        },
+        "memoryMbytes": 2048,
+        "expect": {
+            "status": "SUCCEEDED",
+            "minOk": 3,
+            "maxFailed": 0
+        }
+    },
+    "wait-timeout-block-images": {
+        "input": {
+            "urls": ["https://www.wikipedia.org"],
+            "waitForSelector": "#never-appears-xyz",
+            "blockResources": ["image"],
+            "timeoutSecs": 15,
+            "maxRetries": 0
+        },
+        "memoryMbytes": 1024,
+        "expect": {
+            "status": "SUCCEEDED",
+            "minOk": 1,
+            "maxFailed": 0,
+            "warnings": ["waitForSelector timed out"]
+        }
+    },
+    "emoji-cjk-fonts": {
+        "input": {
+            "urls": ["https://getemoji.com"],
+            "fullPage": false,
+            "waitUntil": "load"
+        },
+        "memoryMbytes": 1024,
+        "expect": {
+            "status": "SUCCEEDED",
+            "minOk": 1,
+            "maxFailed": 0
         }
     }
 }

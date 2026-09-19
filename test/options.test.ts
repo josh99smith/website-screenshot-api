@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+    baseDomain,
     categorizeError,
     COOKIE_BANNER_SELECTORS,
     DEVICE_PRESETS,
+    isSameSite,
     normalizeUrl,
     parseBlockResources,
     parseCookies,
@@ -87,12 +89,30 @@ describe('parseCookies', () => {
     it('keeps well-formed cookies and defaults the path for domain cookies', () => {
         const cookies = parseCookies([
             { name: 'sid', value: 'abc', domain: 'example.com' },
-            { name: 'consent', value: 1, domain: '.example.com', path: '/shop', secure: true, httpOnly: false, sameSite: 'Lax', expires: 1900000000 },
+            {
+                name: 'consent',
+                value: 1,
+                domain: '.example.com',
+                path: '/shop',
+                secure: true,
+                httpOnly: false,
+                sameSite: 'Lax',
+                expires: 1900000000,
+            },
             { name: 'u', value: 'x', url: 'https://example.com/app' },
         ]);
         expect(cookies).toEqual([
             { name: 'sid', value: 'abc', domain: 'example.com', path: '/' },
-            { name: 'consent', value: '1', domain: '.example.com', path: '/shop', secure: true, httpOnly: false, sameSite: 'Lax', expires: 1900000000 },
+            {
+                name: 'consent',
+                value: '1',
+                domain: '.example.com',
+                path: '/shop',
+                secure: true,
+                httpOnly: false,
+                sameSite: 'Lax',
+                expires: 1900000000,
+            },
             { name: 'u', value: 'x', url: 'https://example.com/app' },
         ]);
     });
@@ -139,6 +159,18 @@ describe('parseBlockResources', () => {
     });
 });
 
+describe('isSameSite', () => {
+    it('matches subdomains of the same registrable domain only', () => {
+        expect(baseDomain('www.example.com')).toBe('example.com');
+        expect(baseDomain('shop.example.co.uk')).toBe('example.co.uk');
+        expect(baseDomain('localhost')).toBe('localhost');
+        expect(isSameSite('github.com', 'api.github.com')).toBe(true);
+        expect(isSameSite('www.bbc.co.uk', 'news.bbc.co.uk')).toBe(true);
+        expect(isSameSite('github.com', 'github.githubassets.com')).toBe(false);
+        expect(isSameSite('example.co.uk', 'other.co.uk')).toBe(false);
+    });
+});
+
 describe('normalizeUrl', () => {
     it('adds https and validates hosts', () => {
         expect(normalizeUrl('example.com/path')).toBe('https://example.com/path');
@@ -151,7 +183,9 @@ describe('normalizeUrl', () => {
 
 describe('recordKey', () => {
     it('builds safe, ordered keys', () => {
-        expect(recordKey('screenshot', 3, 'https://www.Example.com/x?y=1', 'png')).toBe('screenshot-003-www-example-com.png');
+        expect(recordKey('screenshot', 3, 'https://www.Example.com/x?y=1', 'png')).toBe(
+            'screenshot-003-www-example-com.png',
+        );
         expect(recordKey('pdf', 12, 'not a url', 'pdf')).toBe('pdf-012-page.pdf');
     });
 });

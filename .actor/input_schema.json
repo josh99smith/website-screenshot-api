@@ -18,7 +18,13 @@
             "type": "string",
             "description": "Viewport, pixel density and user agent preset. Choose `custom` to set width, height and scale factor yourself.",
             "enum": ["laptop", "desktop", "tablet", "mobile", "custom"],
-            "enumTitles": ["Laptop (1366x768)", "Desktop (1920x1080)", "Tablet (820x1180 @2x)", "Mobile (390x844 @3x, iPhone UA)", "Custom"],
+            "enumTitles": [
+                "Laptop (1366x768)",
+                "Desktop (1920x1080)",
+                "Tablet (820x1180 @2x)",
+                "Mobile (390x844 @3x, iPhone UA)",
+                "Custom"
+            ],
             "default": "laptop"
         },
         "fullPage": {
@@ -198,7 +204,14 @@
             "items": {
                 "type": "string",
                 "enum": ["image", "media", "font", "stylesheet", "script", "xhr"],
-                "enumTitles": ["Images", "Audio and video", "Fonts", "Stylesheets (changes rendering)", "Scripts (changes rendering)", "XHR and fetch (changes rendering)"]
+                "enumTitles": [
+                    "Images",
+                    "Audio and video",
+                    "Fonts",
+                    "Stylesheets (changes rendering)",
+                    "Scripts (changes rendering)",
+                    "XHR and fetch (changes rendering)"
+                ]
             },
             "default": [],
             "uniqueItems": true

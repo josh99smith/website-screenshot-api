@@ -5,7 +5,14 @@ export type Device = 'desktop' | 'laptop' | 'tablet' | 'mobile' | 'custom';
 export type WaitUntil = 'load' | 'domcontentloaded' | 'networkidle';
 export type BlockableResource = 'image' | 'media' | 'font' | 'stylesheet' | 'script' | 'xhr';
 
-export const BLOCKABLE_RESOURCES: readonly BlockableResource[] = ['image', 'media', 'font', 'stylesheet', 'script', 'xhr'];
+export const BLOCKABLE_RESOURCES: readonly BlockableResource[] = [
+    'image',
+    'media',
+    'font',
+    'stylesheet',
+    'script',
+    'xhr',
+];
 
 /** A Playwright cookie as accepted by `context.addCookies`. */
 export interface CookieInput {
@@ -46,7 +53,12 @@ export interface Input {
     cookies?: unknown;
     extraHeaders?: unknown;
     blockResources?: unknown;
-    proxyConfiguration?: { useApifyProxy?: boolean; apifyProxyGroups?: string[]; apifyProxyCountry?: string; proxyUrls?: string[] };
+    proxyConfiguration?: {
+        useApifyProxy?: boolean;
+        apifyProxyGroups?: string[];
+        apifyProxyCountry?: string;
+        proxyUrls?: string[];
+    };
 }
 
 export interface Settings {
@@ -81,11 +93,20 @@ export interface Settings {
 const MOBILE_UA =
     'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';
 
-export const DEVICE_PRESETS: Record<Exclude<Device, 'custom'>, Pick<Settings, 'viewport' | 'deviceScaleFactor' | 'isMobile' | 'hasTouch' | 'userAgent'>> = {
+export const DEVICE_PRESETS: Record<
+    Exclude<Device, 'custom'>,
+    Pick<Settings, 'viewport' | 'deviceScaleFactor' | 'isMobile' | 'hasTouch' | 'userAgent'>
+> = {
     desktop: { viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1, isMobile: false, hasTouch: false },
     laptop: { viewport: { width: 1366, height: 768 }, deviceScaleFactor: 1, isMobile: false, hasTouch: false },
     tablet: { viewport: { width: 820, height: 1180 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
-    mobile: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true, userAgent: MOBILE_UA },
+    mobile: {
+        viewport: { width: 390, height: 844 },
+        deviceScaleFactor: 3,
+        isMobile: true,
+        hasTouch: true,
+        userAgent: MOBILE_UA,
+    },
 };
 
 const clamp = (value: number | undefined, fallback: number, min: number, max: number): number => {
@@ -112,14 +133,18 @@ export function parseSettings(input: Input): Settings {
         fullPage: input.fullPage ?? true,
         format,
         quality: format === 'png' ? undefined : clamp(input.quality, 80, 1, 100),
-        waitUntil: input.waitUntil === 'load' || input.waitUntil === 'domcontentloaded' ? input.waitUntil : 'networkidle',
+        waitUntil:
+            input.waitUntil === 'load' || input.waitUntil === 'domcontentloaded' ? input.waitUntil : 'networkidle',
         delayMs: clamp(input.delayMs, 500, 0, 15000),
         autoScroll: input.autoScroll ?? true,
         hideCookieBanners: input.hideCookieBanners ?? true,
         hideSelectors: (input.hideSelectors ?? []).map((s) => s.trim()).filter(Boolean),
         clipSelector: input.clipSelector?.trim() || undefined,
         unstickFixed: input.unstickFixed ?? true,
-        waitForSelector: typeof input.waitForSelector === 'string' && input.waitForSelector.trim() ? input.waitForSelector.trim() : undefined,
+        waitForSelector:
+            typeof input.waitForSelector === 'string' && input.waitForSelector.trim()
+                ? input.waitForSelector.trim()
+                : undefined,
         darkMode: input.darkMode ?? false,
         renderPdf: input.renderPdf ?? false,
         pdfFormat: input.pdfFormat === 'Letter' || input.pdfFormat === 'Legal' ? input.pdfFormat : 'A4',
@@ -160,7 +185,8 @@ export function parseCookies(raw: unknown): CookieInput[] {
         if (typeof entry.expires === 'number' && Number.isFinite(entry.expires)) cookie.expires = entry.expires;
         if (typeof entry.httpOnly === 'boolean') cookie.httpOnly = entry.httpOnly;
         if (typeof entry.secure === 'boolean') cookie.secure = entry.secure;
-        if (entry.sameSite === 'Strict' || entry.sameSite === 'Lax' || entry.sameSite === 'None') cookie.sameSite = entry.sameSite;
+        if (entry.sameSite === 'Strict' || entry.sameSite === 'Lax' || entry.sameSite === 'None')
+            cookie.sameSite = entry.sameSite;
         cookies.push(cookie);
     }
     return cookies;
@@ -180,6 +206,23 @@ export function parseHeaders(raw: unknown): Record<string, string> {
         headers[name] = text;
     }
     return headers;
+}
+
+const SECOND_LEVEL_SUFFIXES = new Set(['co', 'com', 'org', 'net', 'gov', 'edu', 'ac', 'ne', 'or', 'go', 'gob', 'mil']);
+
+/** Registrable domain, approximated: last two labels, or three for `co.uk`-style public suffixes. */
+export function baseDomain(host: string): string {
+    const parts = host.toLowerCase().split('.').filter(Boolean);
+    if (parts.length <= 2) return parts.join('.');
+    const tld = parts[parts.length - 1];
+    const sld = parts[parts.length - 2];
+    const take = tld.length === 2 && SECOND_LEVEL_SUFFIXES.has(sld) ? 3 : 2;
+    return parts.slice(-take).join('.');
+}
+
+/** True when both hosts share a registrable domain (`www.example.com` and `api.example.com`). */
+export function isSameSite(hostA: string, hostB: string): boolean {
+    return baseDomain(hostA) === baseDomain(hostB);
 }
 
 export function parseBlockResources(raw: unknown): BlockableResource[] {
@@ -231,7 +274,13 @@ export function categorizeError(message: string, statusCode?: number): ErrorType
     if (statusCode && statusCode >= 400) return 'http-error';
     if (m.includes('err_name_not_resolved') || m.includes('enotfound') || m.includes('getaddrinfo')) return 'dns';
     if (m.includes('timeout') || m.includes('timed out')) return 'timeout';
-    if (m.includes('err_connection') || m.includes('err_ssl') || m.includes('err_cert') || m.includes('net::') || m.includes('econnre'))
+    if (
+        m.includes('err_connection') ||
+        m.includes('err_ssl') ||
+        m.includes('err_cert') ||
+        m.includes('net::') ||
+        m.includes('econnre')
+    )
         return 'network';
     return 'other';
 }

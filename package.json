@@ -1,6 +1,6 @@
 {
     "name": "website-screenshot-api",
-    "version": "0.0.1",
+    "version": "0.2.0",
     "type": "module",
     "description": "Capture full-page or viewport screenshots and PDFs of any URL.",
     "engines": {
