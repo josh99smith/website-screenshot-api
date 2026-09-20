@@ -1,3 +1,5 @@
+![website-screenshot-api banner](https://raw.githubusercontent.com/josh99smith/apify-actor-assets/main/banners/website-screenshot-api.png)
+
 This **website screenshot API** turns any URL into a full-page screenshot or PDF with one call. Paste a list of websites, pick a device (desktop, laptop, tablet, mobile or custom viewport), choose PNG or JPEG, and get back image files plus a structured record for each page. Cookie banners are hidden automatically, lazy-loaded images are scrolled into view, sticky headers are captured once instead of covering the page, emoji and CJK text render correctly, and pages that fail to load are reported **free of charge**.
 
 It runs in headless Chromium on Apify's infrastructure, so there is nothing to install, and it can be scheduled, called from code, or wired into Zapier, Make, n8n and the Apify MCP server.
@@ -60,6 +62,8 @@ Each URL is opened in headless Chromium with the viewport, pixel density and use
 | `waitUntil`, `delayMs`, `autoScroll`, `timeoutSecs`, `maxRetries` | `networkidle`, 500, `true`, 60, 1 | Loading and timing controls.                                                                                         |
 
 ## Output
+
+![Sample output of website-screenshot-api](https://raw.githubusercontent.com/josh99smith/apify-actor-assets/main/previews/website-screenshot-api.png)
 
 ```json
 {
