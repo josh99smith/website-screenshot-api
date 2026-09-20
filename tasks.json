@@ -1,0 +1,76 @@
+[
+    {
+        "name": "full-page-screenshot-of-a-website",
+        "title": "Full-page screenshot of a website",
+        "seoTitle": "Take a full-page screenshot of any website",
+        "seoDescription": "Capture the entire scrollable page as PNG in a real Chromium browser, with cookie banners hidden and sticky headers un-stuck. Pay per screenshot.",
+        "description": "Capture the whole scrollable page of any URL as a PNG, with cookie banners hidden, lazy images scrolled into view and sticky headers un-stuck. The image link is returned in the dataset for use in reports, archives and monitoring.",
+        "input": {
+            "urls": [
+                "https://apify.com",
+                "https://github.com",
+                "https://www.wikipedia.org"
+            ],
+            "fullPage": true,
+            "format": "png"
+        },
+        "memoryMbytes": 2048
+    },
+    {
+        "name": "mobile-screenshot-of-a-website",
+        "title": "Mobile screenshot of a website",
+        "seoTitle": "Screenshot a website as it looks on a phone",
+        "seoDescription": "Render pages with an iPhone viewport, 3x pixel density and mobile user agent, above the fold only, as JPEG. Ideal for app-store style previews and QA.",
+        "description": "Render a list of pages as they appear on a phone: 390x844 viewport, 3x pixel density and an iPhone user agent, above the fold only, saved as JPEG. Useful for mobile QA, design reviews and preview thumbnails.",
+        "input": {
+            "urls": [
+                "https://apify.com",
+                "https://www.wikipedia.org",
+                "https://news.ycombinator.com"
+            ],
+            "device": "mobile",
+            "fullPage": false,
+            "format": "jpeg",
+            "quality": 85
+        },
+        "memoryMbytes": 2048
+    },
+    {
+        "name": "convert-web-page-to-pdf",
+        "title": "Convert a web page to PDF",
+        "seoTitle": "Convert a web page to PDF from a URL",
+        "seoDescription": "Save any URL as an A4 PDF with backgrounds, plus a screenshot, in one run. Good for archiving articles, reports and compliance evidence.",
+        "description": "Save web pages as A4 PDFs with backgrounds, alongside a screenshot of each page. Use it to archive articles, generate report snapshots or keep dated evidence of how a page looked.",
+        "input": {
+            "urls": [
+                "https://en.wikipedia.org/wiki/Web_scraping",
+                "https://blog.apify.com/"
+            ],
+            "renderPdf": true,
+            "pdfFormat": "A4",
+            "fullPage": false
+        },
+        "memoryMbytes": 2048
+    },
+    {
+        "name": "website-thumbnails-for-link-previews",
+        "title": "Website thumbnails for link previews",
+        "seoTitle": "Generate website thumbnails for link previews",
+        "seoDescription": "Small, fast JPEG captures of the first screen of each URL, with images kept and fonts blocked for speed. Made for directories, newsletters and bookmark tools.",
+        "description": "Generate lightweight JPEG thumbnails of the first screen of many URLs at once for directories, newsletters, bookmarking tools and CMS cards. Laptop viewport, quality 70, no full-page scrolling.",
+        "input": {
+            "urls": [
+                "https://github.com",
+                "https://stripe.com",
+                "https://www.notion.so",
+                "https://vercel.com"
+            ],
+            "fullPage": false,
+            "format": "jpeg",
+            "quality": 70,
+            "waitUntil": "load",
+            "delayMs": 300
+        },
+        "memoryMbytes": 2048
+    }
+]
