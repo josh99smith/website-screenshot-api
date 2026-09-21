@@ -161,7 +161,24 @@ const { items } = await client.dataset(run.defaultDatasetId).listItems();
 console.log(items.map((item) => item.screenshotUrl));
 ```
 
-It is also a tool in the Apify MCP server for AI agents, and connects to Zapier, Make, n8n and Google Sheets in the Integrations tab.
+### Use it from Claude, Cursor, ChatGPT or any MCP client
+
+The Actor is exposed as a tool by the [Apify MCP server](https://mcp.apify.com), so an AI agent can call it by name. Add this to your MCP client configuration (Claude Desktop, Claude Code, Cursor, VS Code, Windsurf and others):
+
+```json
+{
+    "mcpServers": {
+        "apify": {
+            "url": "https://mcp.apify.com?tools=josh99smith/website-screenshot-api",
+            "headers": { "Authorization": "Bearer <YOUR_API_TOKEN>" }
+        }
+    }
+}
+```
+
+Then ask, for example: *"Take a full-page mobile screenshot of apify.com with josh99smith/website-screenshot-api."* The agent fills in the input, runs the Actor and reads the dataset back; you pay the same per-result price as in the Console.
+
+The Actor can also be scheduled, or connected to Zapier, Make, n8n and Google Sheets in the **Integrations** tab.
 
 ## Pricing: how much does it cost to screenshot a website?
 
@@ -206,3 +223,5 @@ The Actor loads public web pages in a browser, like a visitor would, at low requ
 ## Support
 
 Report problems or request features in the **Issues** tab. Feature requests such as scripted interactions are welcome.
+
+The full source code is on GitHub: [josh99smith/website-screenshot-api](https://github.com/josh99smith/website-screenshot-api). Stars and pull requests are welcome.
