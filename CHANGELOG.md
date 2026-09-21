@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1 (2026-09-20)
+
+- Duplicate input URLs are now deduplicated by the Actor instead of being rejected by input validation, as the field description already promised.
+
 ## 0.2.0 (2026-09-18)
 
 - Colour emoji and CJK fonts (Noto Color Emoji, Noto CJK) in the Docker image, so emoji and Chinese / Japanese / Korean text no longer render as boxes.

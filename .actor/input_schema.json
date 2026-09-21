@@ -10,8 +10,7 @@
             "type": "array",
             "description": "One URL per line. The scheme is optional (`example.com` works). Duplicates are removed.",
             "editor": "stringList",
-            "prefill": ["https://apify.com", "https://www.wikipedia.org", "https://github.com"],
-            "uniqueItems": true
+            "prefill": ["https://apify.com", "https://www.wikipedia.org", "https://github.com"]
         },
         "device": {
             "title": "Device preset",
