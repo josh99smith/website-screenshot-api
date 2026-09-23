@@ -1,6 +1,6 @@
 {
     "actorOutputSchemaVersion": 1,
-    "title": "Website Screenshot API output",
+    "title": "Best Damn Website Screenshot API output",
     "properties": {
         "results": {
             "type": "string",

@@ -1,4 +1,4 @@
-![website-screenshot-api banner](https://raw.githubusercontent.com/josh99smith/apify-actor-assets/main/banners/website-screenshot-api.png)
+![website-screenshot-api banner](https://raw.githubusercontent.com/josh99smith/apify-actor-assets/main/banners/website-screenshot-api.png?v=bd1)
 
 This **website screenshot API** turns any URL into a full-page screenshot or PDF with one call. Paste a list of websites, pick a device (desktop, laptop, tablet, mobile or custom viewport), choose PNG or JPEG, and get back image files plus a structured record for each page. Cookie banners are hidden automatically, lazy-loaded images are scrolled into view, sticky headers are captured once instead of covering the page, emoji and CJK text render correctly, and pages that fail to load are reported **free of charge**.
 
@@ -233,6 +233,7 @@ You can also attach [webhooks](https://docs.apify.com/platform/integrations/webh
 
 ## Related Actors by the same developer
 
+- [Best Damn YouTube Comments Scraper](https://apify.com/josh99smith/youtube-comments-scraper): comments and replies from YouTube videos and channels.
 [Best Damn Tech Stack Detector](https://apify.com/josh99smith/tech-stack-detector), [Best Damn Google Autocomplete Scraper](https://apify.com/josh99smith/google-autocomplete-scraper), [Best Damn App Reviews Scraper](https://apify.com/josh99smith/app-reviews-scraper), [Best Damn PageSpeed Insights Audit](https://apify.com/josh99smith/pagespeed-insights-audit), [Best Damn Remote Jobs Aggregator](https://apify.com/josh99smith/remote-jobs-aggregator), [Best Damn PDF Text Extractor](https://apify.com/josh99smith/pdf-text-extractor), [Best Damn Sitemap URL Extractor](https://apify.com/josh99smith/sitemap-url-extractor), [Best Damn RSS to JSON Converter](https://apify.com/josh99smith/rss-feed-to-json).
 
 ## Support

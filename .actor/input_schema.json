@@ -1,6 +1,6 @@
 {
     "$schema": "https://apify.com/schemas/v1/input.ide.json",
-    "title": "Website Screenshot API input",
+    "title": "Best Damn Website Screenshot API input",
     "description": "Paste website URLs and get full-page or viewport screenshots (PNG or JPEG) and optional PDFs. Each rendered page is one billable screenshot; pages that fail to load are reported free of charge.",
     "type": "object",
     "schemaVersion": 1,
