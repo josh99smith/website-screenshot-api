@@ -216,6 +216,21 @@ No fixed cap on URLs; the run stops cleanly at the maximum cost you set. Each pa
 
 The Actor loads public web pages in a browser, like a visitor would, at low request rates. You are responsible for how you use the captured images and for respecting the target sites' terms and copyright.
 
+## Integrate Best Damn Website Screenshot API and automate your workflow
+
+Best Damn Website Screenshot API plugs into the tools you already use through [Apify integrations](https://docs.apify.com/platform/integrations), so results can flow on without anyone downloading a file. Ready-made connectors include:
+
+- [Make](https://docs.apify.com/platform/integrations/make)
+- [Zapier](https://docs.apify.com/platform/integrations/zapier)
+- [n8n](https://docs.apify.com/platform/integrations/n8n)
+- [Slack](https://docs.apify.com/platform/integrations/slack)
+- [Airbyte](https://docs.apify.com/platform/integrations/airbyte)
+- [GitHub](https://docs.apify.com/platform/integrations/github)
+- [Google Drive](https://docs.apify.com/platform/integrations/drive)
+- and [many more](https://docs.apify.com/platform/integrations).
+
+You can also attach [webhooks](https://docs.apify.com/platform/integrations/webhooks) to trigger your own endpoint whenever a run succeeds, fails or times out. For example, drop every new capture into a Google Drive folder, or ping Slack when a scheduled visual check completes.
+
 ## Related Actors by the same developer
 
 [Best Damn Tech Stack Detector](https://apify.com/josh99smith/tech-stack-detector), [Best Damn Google Autocomplete Scraper](https://apify.com/josh99smith/google-autocomplete-scraper), [Best Damn App Reviews Scraper](https://apify.com/josh99smith/app-reviews-scraper), [Best Damn PageSpeed Insights Audit](https://apify.com/josh99smith/pagespeed-insights-audit), [Best Damn Remote Jobs Aggregator](https://apify.com/josh99smith/remote-jobs-aggregator), [Best Damn PDF Text Extractor](https://apify.com/josh99smith/pdf-text-extractor), [Best Damn Sitemap URL Extractor](https://apify.com/josh99smith/sitemap-url-extractor), [Best Damn RSS to JSON Converter](https://apify.com/josh99smith/rss-feed-to-json).
