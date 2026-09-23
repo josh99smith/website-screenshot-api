@@ -234,6 +234,7 @@ You can also attach [webhooks](https://docs.apify.com/platform/integrations/webh
 ## Related Actors by the same developer
 
 - [Best Damn YouTube Comments Scraper](https://apify.com/josh99smith/youtube-comments-scraper): comments and replies from YouTube videos and channels.
+- [Best Damn YouTube Scraper](https://apify.com/josh99smith/youtube-scraper): videos, channels, playlists and search results with statistics.
 [Best Damn Tech Stack Detector](https://apify.com/josh99smith/tech-stack-detector), [Best Damn Google Autocomplete Scraper](https://apify.com/josh99smith/google-autocomplete-scraper), [Best Damn App Reviews Scraper](https://apify.com/josh99smith/app-reviews-scraper), [Best Damn PageSpeed Insights Audit](https://apify.com/josh99smith/pagespeed-insights-audit), [Best Damn Remote Jobs Aggregator](https://apify.com/josh99smith/remote-jobs-aggregator), [Best Damn PDF Text Extractor](https://apify.com/josh99smith/pdf-text-extractor), [Best Damn Sitemap URL Extractor](https://apify.com/josh99smith/sitemap-url-extractor), [Best Damn RSS to JSON Converter](https://apify.com/josh99smith/rss-feed-to-json).
 
 ## Support
