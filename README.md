@@ -218,7 +218,7 @@ The Actor loads public web pages in a browser, like a visitor would, at low requ
 
 ## Related Actors by the same developer
 
-[Website Tech Stack Detector](https://apify.com/josh99smith/tech-stack-detector), [Google Autocomplete Scraper](https://apify.com/josh99smith/google-autocomplete-scraper), [App Reviews Scraper](https://apify.com/josh99smith/app-reviews-scraper), [PageSpeed Insights Audit](https://apify.com/josh99smith/pagespeed-insights-audit), [Remote Jobs Aggregator](https://apify.com/josh99smith/remote-jobs-aggregator), [PDF Text Extractor](https://apify.com/josh99smith/pdf-text-extractor), [Sitemap URL Extractor](https://apify.com/josh99smith/sitemap-url-extractor), [RSS Feed to JSON](https://apify.com/josh99smith/rss-feed-to-json).
+[Best Damn Tech Stack Detector](https://apify.com/josh99smith/tech-stack-detector), [Best Damn Google Autocomplete Scraper](https://apify.com/josh99smith/google-autocomplete-scraper), [Best Damn App Reviews Scraper](https://apify.com/josh99smith/app-reviews-scraper), [Best Damn PageSpeed Insights Audit](https://apify.com/josh99smith/pagespeed-insights-audit), [Best Damn Remote Jobs Aggregator](https://apify.com/josh99smith/remote-jobs-aggregator), [Best Damn PDF Text Extractor](https://apify.com/josh99smith/pdf-text-extractor), [Best Damn Sitemap URL Extractor](https://apify.com/josh99smith/sitemap-url-extractor), [Best Damn RSS to JSON Converter](https://apify.com/josh99smith/rss-feed-to-json).
 
 ## Support
 

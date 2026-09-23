@@ -2,8 +2,8 @@
     "$schema": "https://apify.com/schemas/v1/actor.ide.json",
     "actorSpecification": 1,
     "name": "website-screenshot-api",
-    "title": "Website Screenshot API",
-    "description": "Screenshot any URL in a real browser: full-page or viewport PNG/JPEG, desktop and mobile presets, dark mode, cookie banners hidden, optional PDF. Pay per page.",
+    "title": "Best Damn Website Screenshot API",
+    "description": "Capture any URL in a real Chrome browser: full-page or viewport PNG/JPEG, desktop and mobile presets, dark mode and optional PDF. Cookie banners are cleared before the shot, you pay per page, and failed captures are free.",
     "version": "0.2",
     "buildTag": "latest",
     "meta": {
