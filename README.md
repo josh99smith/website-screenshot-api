@@ -239,6 +239,6 @@ You can also attach [webhooks](https://docs.apify.com/platform/integrations/webh
 
 ## Support
 
-Report problems or request features in the **Issues** tab. Feature requests such as scripted interactions are welcome.
+Report problems or request features in the **Issues** tab. Feature requests such as scripted interactions are welcome. If this Actor saved you time, a review on its Store page helps other people find it.
 
 The full source code is on GitHub: [josh99smith/website-screenshot-api](https://github.com/josh99smith/website-screenshot-api). Stars and pull requests are welcome.
